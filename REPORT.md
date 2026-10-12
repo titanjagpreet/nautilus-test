@@ -191,14 +191,16 @@ Re-scored from the recorded replies on 2026-10-12T15:00:36+00:00 UTC: model-leve
   inlined (`transport.typed_union_branches`, tested to accept exactly the same documents; 52 KB instead of 13 KB,
   cached after the first call), and **DeepSeek accepts it** (2026-10-12).
 * **A model slip that strict mode does not prevent: one `}` too many.** g21's first reply in JSON mode was a
-  complete object followed by one stray `}` (in the recording). The first strict-tools reply failed the same way: a
-  complete 2,259-character object, then more text ending in `}` — by the parser's error, most likely the same
-  single brace (its raw text was not kept; what follows an object is logged now). The old parser read "from the
-  first `{` to the last `}`", which pulls a stray brace in and fails; it now reads exactly one object, accepts
-  closing brackets or text after it (logged in the ledger), and still rejects a second object as ambiguous.
-  Replayed on the recorded run this changes no first-try outcome — g21's first reply also used an `==` operator —
-  but the repair prompt now names the real error instead of a JSON error. **Not yet measured:** first-try validity
-  with strict tools on the whole eval.
+  complete object followed by one stray `}` (in the recording). In strict tools it is common: **2 of the first 3
+  strict-tools writer replies had text after a complete object** — the first failed to parse (its raw text was not
+  kept; the parser's error fits one `}`), the next was read and logged exactly as `ignored after the JSON object:
+  }`; the third, a repair turn, was clean. The old parser read "from the first `{` to the last `}`", which pulls
+  the stray brace in and fails; it now reads exactly one object, accepts closing brackets or text after it (logged
+  in the ledger), and still rejects a second object as ambiguous. Replayed on the recorded run this changes no
+  first-try outcome — g21's first reply also used an `==` operator — but the repair prompt now names the real error
+  instead of a JSON error. One strict-tools request costs about the same as in JSON mode once cached: the
+  confirming call had a 21.2K-token prompt (the 52 KB schema), 99% from DeepSeek's cache, 833 output tokens,
+  $0.00059, 4.6 s. **Not yet measured:** first-try validity with strict tools on the whole eval.
 * **Intent:** objective checks 100%, judge 91% (39 judged). A manual check of 11 judge verdicts agreed on 9
   (`evals/judge_check.md`); with the two disagreements corrected the judge score would be ~95%. The objective
   checks are coarse — g11 passed them while missing its key condition — and **the model's own notes can be

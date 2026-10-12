@@ -344,8 +344,8 @@ What it took for the Numba engine to give *identical* trades (`tests/test_parity
   now inlined (`typed_union_branches`, tested to accept exactly the same documents) — a 4× larger schema
   (52 KB), cached after the first call — and DeepSeek accepts it.
 * **"Strict" output can still carry a stray character.** DeepSeek V4.1-Flash sometimes closes one brace too many
-  after a complete object — seen in JSON mode and again in strict tools, so the constraint does not cover the end
-  of the arguments. Parse exactly one JSON value (`json.JSONDecoder.raw_decode`) and look at what follows;
+  after a complete object — once in 45 JSON-mode replies, but in 2 of the first 3 strict-tools replies (one
+  logged as exactly `}`), so the constraint does not cover the end of the arguments. Parse exactly one JSON value (`json.JSONDecoder.raw_decode`) and look at what follows;
   "first `{` to last `}`" is the wrong heuristic for this slip, since it pulls the stray brace in. Keep the text
   around a parse error: without it, two different slips (a stray brace, a reply that stops after a comma) both
   read as "invalid JSON", and one was misdescribed until the recording was re-read.
