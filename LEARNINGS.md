@@ -196,3 +196,27 @@ upstream: append to a list and concat once.)
   in pytest config).
 * A Python subclass of a Cython class (`FillModel`, `SimulationModule`, `Strategy`) can override `cpdef`
   methods and Nautilus will call the override — that is what makes the fill model and funding module possible.
+
+## 12. Measured speed and memory (Phase 2, hand-written strategy, real BTC data)
+
+4 vCPU sandbox, Python 3.13, NautilusTrader 1.231.0, each scenario in a fresh process
+(`benchmarks/nautilus_phase2.py` → `benchmarks/results/nautilus_phase2.json`). "Stock" = NautilusTrader as
+shipped; "patched" = with the `PortfolioAnalyzer` fix from §10 (identical results).
+
+| scenario | data points | positions | stock wall | stock peak RSS | patched wall | patched peak RSS |
+|---|---|---|---|---|---|---|
+| empty node (import + engine + venue + instrument, no data) | 0 | 0 | 0.9 s | 370 MB (imports alone 77 MB) | – | – |
+| 1 year of 1m bars, strategy on 1m | 525,600 | 14,038 | **575 s** | 1,303 MB | **127 s** | 1,265 MB |
+| 5 years of 15m bars, strategy on 15m | 175,265 | 4,634 | 68 s | 1,068 MB | 30 s | 1,050 MB |
+| 2 years: 15m strategy, venue on 1m bars | 1,121,280 | 1,760 | 50 s | 1,031 MB | 41 s | 1,139 MB |
+
+What this says:
+* **An empty engine already costs ~370 MB**, and a few hundred thousand bars push it past 1 GB. Every run must be
+  a separate process if you want to run several in parallel on a small server.
+* Throughput is ~25–35k data points/s when the strategy only reacts occasionally, but **~4k bars/s when the
+  strategy's Python `on_bar` runs on every bar and trades often** — per-event overhead (message bus, order
+  events, portfolio updates) dominates, not the matching engine.
+* Without the analyzer fix, cost grows **quadratically with the number of trades**: unusable for 1-minute
+  strategies over long periods.
+* Parameter sweeps of hundreds of combinations are therefore impractical in Nautilus (≈ 0.5–2 min per run);
+  that is what the Numba engine (Phase 4) is for.

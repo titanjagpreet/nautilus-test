@@ -1,0 +1,1238 @@
+{
+  "$defs": {
+    "AllOf": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "all",
+          "title": "Op",
+          "type": "string"
+        },
+        "args": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "<": "#/$defs/Compare",
+                "<=": "#/$defs/Compare",
+                ">": "#/$defs/Compare",
+                ">=": "#/$defs/Compare",
+                "all": "#/$defs/AllOf",
+                "any": "#/$defs/AnyOf",
+                "between": "#/$defs/Between",
+                "crosses_above": "#/$defs/Cross",
+                "crosses_below": "#/$defs/Cross",
+                "not": "#/$defs/Not"
+              },
+              "propertyName": "op"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/Compare"
+              },
+              {
+                "$ref": "#/$defs/Cross"
+              },
+              {
+                "$ref": "#/$defs/Between"
+              },
+              {
+                "$ref": "#/$defs/AllOf"
+              },
+              {
+                "$ref": "#/$defs/AnyOf"
+              },
+              {
+                "$ref": "#/$defs/Not"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Args",
+          "type": "array"
+        }
+      },
+      "required": [
+        "op",
+        "args"
+      ],
+      "title": "AllOf",
+      "type": "object"
+    },
+    "AnyOf": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "any",
+          "title": "Op",
+          "type": "string"
+        },
+        "args": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "<": "#/$defs/Compare",
+                "<=": "#/$defs/Compare",
+                ">": "#/$defs/Compare",
+                ">=": "#/$defs/Compare",
+                "all": "#/$defs/AllOf",
+                "any": "#/$defs/AnyOf",
+                "between": "#/$defs/Between",
+                "crosses_above": "#/$defs/Cross",
+                "crosses_below": "#/$defs/Cross",
+                "not": "#/$defs/Not"
+              },
+              "propertyName": "op"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/Compare"
+              },
+              {
+                "$ref": "#/$defs/Cross"
+              },
+              {
+                "$ref": "#/$defs/Between"
+              },
+              {
+                "$ref": "#/$defs/AllOf"
+              },
+              {
+                "$ref": "#/$defs/AnyOf"
+              },
+              {
+                "$ref": "#/$defs/Not"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Args",
+          "type": "array"
+        }
+      },
+      "required": [
+        "op",
+        "args"
+      ],
+      "title": "AnyOf",
+      "type": "object"
+    },
+    "AtrStop": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "atr",
+          "title": "Type",
+          "type": "string"
+        },
+        "multiple": {
+          "title": "Multiple",
+          "type": "number"
+        },
+        "atr_period": {
+          "default": 14,
+          "title": "Atr Period",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "multiple"
+      ],
+      "title": "AtrStop",
+      "type": "object"
+    },
+    "AtrTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "atr",
+          "title": "Type",
+          "type": "string"
+        },
+        "multiple": {
+          "title": "Multiple",
+          "type": "number"
+        },
+        "atr_period": {
+          "default": 14,
+          "title": "Atr Period",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "multiple"
+      ],
+      "title": "AtrTarget",
+      "type": "object"
+    },
+    "AtrTrail": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "atr",
+          "title": "Type",
+          "type": "string"
+        },
+        "multiple": {
+          "title": "Multiple",
+          "type": "number"
+        },
+        "atr_period": {
+          "default": 14,
+          "title": "Atr Period",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "multiple"
+      ],
+      "title": "AtrTrail",
+      "type": "object"
+    },
+    "Between": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "between",
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndicatorOperand"
+            },
+            {
+              "$ref": "#/$defs/InputOperand"
+            },
+            {
+              "$ref": "#/$defs/ConstOperand"
+            }
+          ],
+          "title": "Value"
+        },
+        "low": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndicatorOperand"
+            },
+            {
+              "$ref": "#/$defs/InputOperand"
+            },
+            {
+              "$ref": "#/$defs/ConstOperand"
+            }
+          ],
+          "title": "Low"
+        },
+        "high": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndicatorOperand"
+            },
+            {
+              "$ref": "#/$defs/InputOperand"
+            },
+            {
+              "$ref": "#/$defs/ConstOperand"
+            }
+          ],
+          "title": "High"
+        }
+      },
+      "required": [
+        "op",
+        "value",
+        "low",
+        "high"
+      ],
+      "title": "Between",
+      "type": "object"
+    },
+    "Compare": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "enum": [
+            ">",
+            "<",
+            ">=",
+            "<="
+          ],
+          "title": "Op",
+          "type": "string"
+        },
+        "left": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndicatorOperand"
+            },
+            {
+              "$ref": "#/$defs/InputOperand"
+            },
+            {
+              "$ref": "#/$defs/ConstOperand"
+            }
+          ],
+          "title": "Left"
+        },
+        "right": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndicatorOperand"
+            },
+            {
+              "$ref": "#/$defs/InputOperand"
+            },
+            {
+              "$ref": "#/$defs/ConstOperand"
+            }
+          ],
+          "title": "Right"
+        }
+      },
+      "required": [
+        "op",
+        "left",
+        "right"
+      ],
+      "title": "Compare",
+      "type": "object"
+    },
+    "ConstOperand": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "ConstOperand",
+      "type": "object"
+    },
+    "Costs": {
+      "additionalProperties": false,
+      "properties": {
+        "fee_profile": {
+          "default": "lighter_standard",
+          "title": "Fee Profile",
+          "type": "string"
+        },
+        "slippage_ticks": {
+          "default": 1,
+          "title": "Slippage Ticks",
+          "type": "integer"
+        },
+        "funding": {
+          "default": true,
+          "title": "Funding",
+          "type": "boolean"
+        }
+      },
+      "title": "Costs",
+      "type": "object"
+    },
+    "Cross": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "enum": [
+            "crosses_above",
+            "crosses_below"
+          ],
+          "title": "Op",
+          "type": "string"
+        },
+        "left": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndicatorOperand"
+            },
+            {
+              "$ref": "#/$defs/InputOperand"
+            },
+            {
+              "$ref": "#/$defs/ConstOperand"
+            }
+          ],
+          "title": "Left"
+        },
+        "right": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndicatorOperand"
+            },
+            {
+              "$ref": "#/$defs/InputOperand"
+            },
+            {
+              "$ref": "#/$defs/ConstOperand"
+            }
+          ],
+          "title": "Right"
+        }
+      },
+      "required": [
+        "op",
+        "left",
+        "right"
+      ],
+      "title": "Cross",
+      "type": "object"
+    },
+    "Execution": {
+      "additionalProperties": false,
+      "description": "When decisions are made and filled. Only the defaults are valid; the other values exist so that specs\ntranslated from other tools (e.g. Pine's ``process_orders_on_close=true`` or ``request.security(...,\nlookahead=barmerge.lookahead_on)``) parse and are then rejected by the validator's look-ahead guards.",
+      "properties": {
+        "fill_on": {
+          "default": "next_bar_open",
+          "enum": [
+            "next_bar_open",
+            "same_bar_close"
+          ],
+          "title": "Fill On",
+          "type": "string"
+        },
+        "htf_bars": {
+          "default": "completed",
+          "enum": [
+            "completed",
+            "forming"
+          ],
+          "title": "Htf Bars",
+          "type": "string"
+        }
+      },
+      "title": "Execution",
+      "type": "object"
+    },
+    "FixedUsd": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "fixed_usd",
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "description": "notional in USD(C)",
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "FixedUsd",
+      "type": "object"
+    },
+    "Indicator": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "unique name used by rules",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "sma",
+            "ema",
+            "wma",
+            "hma",
+            "rsi",
+            "macd",
+            "bbands",
+            "atr",
+            "stoch",
+            "adx",
+            "donchian",
+            "keltner",
+            "vwap",
+            "roc",
+            "cci",
+            "obv",
+            "highest",
+            "lowest"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Params",
+          "type": "object"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "enum": [
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "hl2",
+                "hlc3",
+                "ohlc4"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "price field; default depends on type",
+          "title": "Source"
+        },
+        "timeframe": {
+          "anyOf": [
+            {
+              "enum": [
+                "5m",
+                "15m",
+                "1h",
+                "4h",
+                "1d"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "higher timeframe filter; null = base",
+          "title": "Timeframe"
+        }
+      },
+      "required": [
+        "id",
+        "type"
+      ],
+      "title": "Indicator",
+      "type": "object"
+    },
+    "IndicatorOperand": {
+      "additionalProperties": false,
+      "properties": {
+        "indicator": {
+          "title": "Indicator",
+          "type": "string"
+        },
+        "output": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "e.g. 'upper' for bbands; null = the main output",
+          "title": "Output"
+        },
+        "bars_ago": {
+          "default": 0,
+          "description": "0 = the bar just closed",
+          "title": "Bars Ago",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "indicator"
+      ],
+      "title": "IndicatorOperand",
+      "type": "object"
+    },
+    "InputOperand": {
+      "additionalProperties": false,
+      "properties": {
+        "input": {
+          "enum": [
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "hl2",
+            "hlc3",
+            "ohlc4",
+            "funding_rate",
+            "hour_utc"
+          ],
+          "title": "Input",
+          "type": "string"
+        },
+        "bars_ago": {
+          "default": 0,
+          "title": "Bars Ago",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "input"
+      ],
+      "title": "InputOperand",
+      "type": "object"
+    },
+    "Market": {
+      "additionalProperties": false,
+      "properties": {
+        "symbol": {
+          "enum": [
+            "BTC-PERP",
+            "XAU-PERP"
+          ],
+          "title": "Symbol",
+          "type": "string"
+        },
+        "timeframe": {
+          "enum": [
+            "5m",
+            "15m",
+            "1h",
+            "4h",
+            "1d"
+          ],
+          "title": "Timeframe",
+          "type": "string"
+        },
+        "direction": {
+          "default": "both",
+          "enum": [
+            "long",
+            "short",
+            "both"
+          ],
+          "title": "Direction",
+          "type": "string"
+        }
+      },
+      "required": [
+        "symbol",
+        "timeframe"
+      ],
+      "title": "Market",
+      "type": "object"
+    },
+    "Meta": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Description",
+          "type": "string"
+        },
+        "author": {
+          "default": "user",
+          "enum": [
+            "ai",
+            "user",
+            "template"
+          ],
+          "title": "Author",
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Tags",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Meta",
+      "type": "object"
+    },
+    "Not": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "not",
+          "title": "Op",
+          "type": "string"
+        },
+        "arg": {
+          "discriminator": {
+            "mapping": {
+              "<": "#/$defs/Compare",
+              "<=": "#/$defs/Compare",
+              ">": "#/$defs/Compare",
+              ">=": "#/$defs/Compare",
+              "all": "#/$defs/AllOf",
+              "any": "#/$defs/AnyOf",
+              "between": "#/$defs/Between",
+              "crosses_above": "#/$defs/Cross",
+              "crosses_below": "#/$defs/Cross",
+              "not": "#/$defs/Not"
+            },
+            "propertyName": "op"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Compare"
+            },
+            {
+              "$ref": "#/$defs/Cross"
+            },
+            {
+              "$ref": "#/$defs/Between"
+            },
+            {
+              "$ref": "#/$defs/AllOf"
+            },
+            {
+              "$ref": "#/$defs/AnyOf"
+            },
+            {
+              "$ref": "#/$defs/Not"
+            }
+          ],
+          "title": "Arg"
+        }
+      },
+      "required": [
+        "op",
+        "arg"
+      ],
+      "title": "Not",
+      "type": "object"
+    },
+    "PercentEquity": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "percent_equity",
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "description": "notional as % of account equity, e.g. 20",
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "PercentEquity",
+      "type": "object"
+    },
+    "PercentStop": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "percent",
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "description": "distance from entry in %, e.g. 1.5",
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "PercentStop",
+      "type": "object"
+    },
+    "PercentTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "percent",
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "PercentTarget",
+      "type": "object"
+    },
+    "PercentTrail": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "percent",
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "PercentTrail",
+      "type": "object"
+    },
+    "Risk": {
+      "additionalProperties": false,
+      "properties": {
+        "position_sizing": {
+          "discriminator": {
+            "mapping": {
+              "fixed_usd": "#/$defs/FixedUsd",
+              "percent_equity": "#/$defs/PercentEquity"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/PercentEquity"
+            },
+            {
+              "$ref": "#/$defs/FixedUsd"
+            }
+          ],
+          "title": "Position Sizing"
+        },
+        "leverage": {
+          "default": 3.0,
+          "title": "Leverage",
+          "type": "number"
+        },
+        "stop_loss": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "atr": "#/$defs/AtrStop",
+                  "percent": "#/$defs/PercentStop",
+                  "structure": "#/$defs/StructureStop"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/PercentStop"
+                },
+                {
+                  "$ref": "#/$defs/AtrStop"
+                },
+                {
+                  "$ref": "#/$defs/StructureStop"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "required; null is rejected by the validator",
+          "title": "Stop Loss"
+        },
+        "take_profit": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "atr": "#/$defs/AtrTarget",
+                  "percent": "#/$defs/PercentTarget",
+                  "risk_reward": "#/$defs/RiskRewardTarget"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/PercentTarget"
+                },
+                {
+                  "$ref": "#/$defs/AtrTarget"
+                },
+                {
+                  "$ref": "#/$defs/RiskRewardTarget"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Take Profit"
+        },
+        "trailing_stop": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "atr": "#/$defs/AtrTrail",
+                  "percent": "#/$defs/PercentTrail"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/PercentTrail"
+                },
+                {
+                  "$ref": "#/$defs/AtrTrail"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "updated at bar close only",
+          "title": "Trailing Stop"
+        },
+        "time_exit_bars": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Time Exit Bars"
+        },
+        "cooldown_bars": {
+          "default": 0,
+          "title": "Cooldown Bars",
+          "type": "integer"
+        },
+        "max_trades_per_day": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Trades Per Day"
+        }
+      },
+      "required": [
+        "position_sizing",
+        "stop_loss"
+      ],
+      "title": "Risk",
+      "type": "object"
+    },
+    "RiskRewardTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "risk_reward",
+          "title": "Type",
+          "type": "string"
+        },
+        "multiple": {
+          "description": "target distance = multiple \u00d7 stop distance",
+          "title": "Multiple",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "multiple"
+      ],
+      "title": "RiskRewardTarget",
+      "type": "object"
+    },
+    "Rules": {
+      "additionalProperties": false,
+      "properties": {
+        "entry_long": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "<": "#/$defs/Compare",
+                  "<=": "#/$defs/Compare",
+                  ">": "#/$defs/Compare",
+                  ">=": "#/$defs/Compare",
+                  "all": "#/$defs/AllOf",
+                  "any": "#/$defs/AnyOf",
+                  "between": "#/$defs/Between",
+                  "crosses_above": "#/$defs/Cross",
+                  "crosses_below": "#/$defs/Cross",
+                  "not": "#/$defs/Not"
+                },
+                "propertyName": "op"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/Compare"
+                },
+                {
+                  "$ref": "#/$defs/Cross"
+                },
+                {
+                  "$ref": "#/$defs/Between"
+                },
+                {
+                  "$ref": "#/$defs/AllOf"
+                },
+                {
+                  "$ref": "#/$defs/AnyOf"
+                },
+                {
+                  "$ref": "#/$defs/Not"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entry Long"
+        },
+        "exit_long": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "<": "#/$defs/Compare",
+                  "<=": "#/$defs/Compare",
+                  ">": "#/$defs/Compare",
+                  ">=": "#/$defs/Compare",
+                  "all": "#/$defs/AllOf",
+                  "any": "#/$defs/AnyOf",
+                  "between": "#/$defs/Between",
+                  "crosses_above": "#/$defs/Cross",
+                  "crosses_below": "#/$defs/Cross",
+                  "not": "#/$defs/Not"
+                },
+                "propertyName": "op"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/Compare"
+                },
+                {
+                  "$ref": "#/$defs/Cross"
+                },
+                {
+                  "$ref": "#/$defs/Between"
+                },
+                {
+                  "$ref": "#/$defs/AllOf"
+                },
+                {
+                  "$ref": "#/$defs/AnyOf"
+                },
+                {
+                  "$ref": "#/$defs/Not"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exit Long"
+        },
+        "entry_short": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "<": "#/$defs/Compare",
+                  "<=": "#/$defs/Compare",
+                  ">": "#/$defs/Compare",
+                  ">=": "#/$defs/Compare",
+                  "all": "#/$defs/AllOf",
+                  "any": "#/$defs/AnyOf",
+                  "between": "#/$defs/Between",
+                  "crosses_above": "#/$defs/Cross",
+                  "crosses_below": "#/$defs/Cross",
+                  "not": "#/$defs/Not"
+                },
+                "propertyName": "op"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/Compare"
+                },
+                {
+                  "$ref": "#/$defs/Cross"
+                },
+                {
+                  "$ref": "#/$defs/Between"
+                },
+                {
+                  "$ref": "#/$defs/AllOf"
+                },
+                {
+                  "$ref": "#/$defs/AnyOf"
+                },
+                {
+                  "$ref": "#/$defs/Not"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entry Short"
+        },
+        "exit_short": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "<": "#/$defs/Compare",
+                  "<=": "#/$defs/Compare",
+                  ">": "#/$defs/Compare",
+                  ">=": "#/$defs/Compare",
+                  "all": "#/$defs/AllOf",
+                  "any": "#/$defs/AnyOf",
+                  "between": "#/$defs/Between",
+                  "crosses_above": "#/$defs/Cross",
+                  "crosses_below": "#/$defs/Cross",
+                  "not": "#/$defs/Not"
+                },
+                "propertyName": "op"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/Compare"
+                },
+                {
+                  "$ref": "#/$defs/Cross"
+                },
+                {
+                  "$ref": "#/$defs/Between"
+                },
+                {
+                  "$ref": "#/$defs/AllOf"
+                },
+                {
+                  "$ref": "#/$defs/AnyOf"
+                },
+                {
+                  "$ref": "#/$defs/Not"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exit Short"
+        }
+      },
+      "title": "Rules",
+      "type": "object"
+    },
+    "StructureStop": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "structure",
+          "title": "Type",
+          "type": "string"
+        },
+        "lookback": {
+          "description": "long: lowest low of the last N bars; short: highest high",
+          "title": "Lookback",
+          "type": "integer"
+        },
+        "buffer_pct": {
+          "default": 0.0,
+          "title": "Buffer Pct",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "lookback"
+      ],
+      "title": "StructureStop",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "spec_version": {
+      "const": "0.1",
+      "default": "0.1",
+      "title": "Spec Version",
+      "type": "string"
+    },
+    "meta": {
+      "$ref": "#/$defs/Meta"
+    },
+    "market": {
+      "$ref": "#/$defs/Market"
+    },
+    "indicators": {
+      "items": {
+        "$ref": "#/$defs/Indicator"
+      },
+      "maxItems": 20,
+      "title": "Indicators",
+      "type": "array"
+    },
+    "rules": {
+      "$ref": "#/$defs/Rules"
+    },
+    "risk": {
+      "$ref": "#/$defs/Risk"
+    },
+    "costs": {
+      "$ref": "#/$defs/Costs"
+    },
+    "execution": {
+      "$ref": "#/$defs/Execution"
+    }
+  },
+  "required": [
+    "meta",
+    "market",
+    "rules",
+    "risk"
+  ],
+  "title": "StrategySpec",
+  "type": "object"
+}

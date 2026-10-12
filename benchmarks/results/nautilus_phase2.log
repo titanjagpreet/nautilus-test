@@ -1,0 +1,8 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+empty_node {'wall_s': 0.91, 'import_only_rss_mb': 77.0, 'peak_rss_mb': 370.0}
+1y_1m_strategy_1m/stock {'wall_s': 575.4, 'peak_rss_mb': 1302.6, 'data_points': 525600, 'positions': 14038, 'net_pnl': -7268.706678}
+1y_1m_strategy_1m/patched {'wall_s': 127.41, 'peak_rss_mb': 1265.2, 'data_points': 525600, 'positions': 14038, 'net_pnl': -7268.706678}
+5y_15m_strategy_15m/stock {'wall_s': 68.25, 'peak_rss_mb': 1068.2, 'data_points': 175265, 'positions': 4634, 'net_pnl': -3962.191043}
+5y_15m_strategy_15m/patched {'wall_s': 30.46, 'peak_rss_mb': 1049.8, 'data_points': 175265, 'positions': 4634, 'net_pnl': -3962.191043}
+2y_15m_strategy_1m_exec/stock {'wall_s': 49.65, 'peak_rss_mb': 1030.8, 'data_points': 1121280, 'positions': 1760, 'net_pnl': -1175.511873}
+2y_15m_strategy_1m_exec/patched {'wall_s': 40.99, 'peak_rss_mb': 1139.3, 'data_points': 1121280, 'positions': 1760, 'net_pnl': -1175.511873}

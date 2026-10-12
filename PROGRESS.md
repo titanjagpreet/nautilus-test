@@ -6,7 +6,7 @@ Running log of what is done, measured numbers, problems and decisions. Updated a
 
 - [x] Network check done; sources and fallbacks recorded.
 - [x] BTC and XAU history downloaded, checksummed where possible, validated, resampled, documented in DATA.md.
-- [ ] The hand-written Nautilus strategy runs with fees, slippage and funding visible; speed and memory measured.
+- [x] The hand-written Nautilus strategy runs with fees, slippage and funding visible; speed and memory measured.
 - [ ] Spec schema, validator (look-ahead and higher-timeframe guards), plain-language renderer, 10 catalogue strategies.
 - [ ] SpecStrategy runs any valid spec in Nautilus.
 - [ ] The fast engine matches Nautilus on all 10 catalogue strategies within the stated tolerance, or every difference is documented.
@@ -103,3 +103,42 @@ cross-check ran instead (median |diff| 5.8 bps; worst minutes = 2018 Tether de-p
 **Decisions.** Third-party GitHub copies on an allowed host are used and labelled; the blocked service's own
 endpoints (e.g. its S3 origin) are not. Pinned commits + SHA-256 manifest for reproducibility. Data stays
 git-ignored (`data/`), ~1.4 GB on disk (960 MB raw, 290 MB canonical, 124 MB resampled).
+
+## Phase 2 — NautilusTrader fundamentals (2026-10-12) ✅
+
+**Acceptance:** the hand-written strategy runs end to end on real data with fees, slippage and funding visible ✅;
+speed and memory measured ✅.
+
+**Built.** `strategy_lab/engines/nautilus/`: BTC-PERP / XAU-PERP `CryptoPerpetual`s on a simulated venue
+`LIGHTER` (margin account, netting, leverage 3x default, 10,000 USDC); maker/taker fees with configurable
+profiles (`config/fee_profiles.json`: `lighter_standard` 0/0 bps, `lighter_premium` 0.4/2.8 bps); an
+order-type-aware fill model (1 tick against you on market and stop fills, never on limits); bar execution with
+adaptive high/low ordering; a funding `SimulationModule`; bar loading via `BarDataWrangler` and via
+`ParquetDataCatalog` (identical results); the EMA(12/48) + ATR(14) bracket strategy (stop 2×ATR, target 3×ATR,
+20% of equity).
+
+**Reference run** — BTC 15m strategy, venue executing on 1m bars, 2024-07-01 → 2026-07-01, Binance spot BTCUSDT
+proxy, funding from Binance BTCUSDT (8h):
+
+| fee profile | positions | net PnL | fees | funding paid (net) | funding events |
+|---|---|---|---|---|---|
+| lighter_premium | 1,760 | **−1,175.51 USDC (−11.8%)** | 1,614.05 | +0.14 | 729 |
+| lighter_standard | 1,760 | **+422.91 USDC (+4.2%)** | 0.00 | +0.48 | 729 |
+
+Nautilus portfolio statistics (premium): win rate 37.3%, profit factor 0.81, Sharpe (252 d) −1.14, Sortino
+−1.45, avg winner +16.27, avg loser −10.73. Fills, positions, account and funding ledgers are written by
+`python -m strategy_lab.engines.nautilus.handwritten --out runs/…`.
+
+**Funding.** Nautilus 1.231 does not settle funding (`FundingRateUpdate` is data only; LEARNINGS §6) → our
+`FundingModule` charges `size × price × rate` at each funding time via `exchange.adjust_account`, reported as a
+separate line. Verified by a hand-made test and by reconciling ledgers to the account balance.
+
+**Measurements** (LEARNINGS §12): empty node 370 MB; 1 y of 1m bars with a 1m strategy **575 s stock / 127 s
+patched**, 1.3 GB; 5 y of 15m bars 68 s / 30 s, ~1.05 GB.
+
+**Problems found and fixed.**
+- Market orders fill at the signal bar's close; stock slippage also slips take-profit limits; neither bar
+  ordering is "stop first" → order-type-aware fill model now; spec engine semantics handled in Phase 3.
+- `reject_stop_orders=True` leaves a position unprotected when its stop is already through the market → False.
+- pandas 3 µs timestamps silently broke funding (and nearly bar timestamps) → normalise to ns at storage.
+- Quadratic `pd.concat` in Nautilus's `PortfolioAnalyzer` → tested patch (4.5× faster on 1m).
