@@ -93,6 +93,19 @@ def load_market(
     return MarketData(market, f"{src}/{sym}", bars.reset_index(drop=True), funding, funding_source)
 
 
+def slice_market(market: MarketData, start: pd.Timestamp, end: pd.Timestamp) -> MarketData:
+    """The bars (by open time) and funding events in [start, end)."""
+    bars = market.bars_1m
+    funding = market.funding
+    return MarketData(
+        market.market,
+        market.source,
+        bars[(bars["ts"] >= start) & (bars["ts"] < end)].reset_index(drop=True),
+        funding[(funding["ts"] >= start) & (funding["ts"] < end)].reset_index(drop=True),
+        market.funding_source,
+    )
+
+
 def funding_8h(funding: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
     """Funding times (ns) and rates scaled to an 8-hour period (the spec's ``funding_rate`` input)."""
     if funding.empty:

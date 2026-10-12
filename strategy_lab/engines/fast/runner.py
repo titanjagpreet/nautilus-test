@@ -147,8 +147,14 @@ def run_prepared(
     starting_balance: float = 10_000.0,
     start: pd.Timestamp | None = None,
     end: pd.Timestamp | None = None,
+    trade_from: pd.Timestamp | None = None,
 ) -> BacktestResult:
-    """Simulate ``spec`` (default: the prepared one; it may differ only in tunable parameters)."""
+    """Simulate ``spec`` (default: the prepared one; it may differ only in tunable parameters).
+
+    ``trade_from``: indicators warm up on the data before it, but no entry is signalled at a bar close before
+    it, and the equity curve and benchmarks start there. Used by the lab for out-of-sample windows (warming up
+    on earlier data is not look-ahead). ``start``/``end`` only label the result.
+    """
     t0 = time.perf_counter()
     spec = spec or prep.spec
     base, minutes = prep.base, prep.minutes
@@ -162,6 +168,9 @@ def run_prepared(
     rules = spec.rules
     entry_long, exit_long = compiled.evaluate(rules.entry_long), compiled.evaluate(rules.exit_long)
     entry_short, exit_short = compiled.evaluate(rules.entry_short), compiled.evaluate(rules.exit_short)
+    if trade_from is not None:
+        allowed = base.close_ns >= trade_from.value
+        entry_long, entry_short = entry_long & allowed, entry_short & allowed
 
     nan = np.full(len(base), np.nan)
     atr_by_period = {p: ind_fn.atr(base.high, base.low, base.close, p) for p in _risk_periods(spec)}
@@ -216,6 +225,10 @@ def run_prepared(
     trades["pnl_net"] = trades["pnl_gross"] - trades["fees"]
     attribute_funding(trades, funding)
     closes = pd.Series(base.close, index=pd.to_datetime(base.close_ns, utc=True))
+    equity = equity_curve(trades, funding, closes, starting_balance)
+    if trade_from is not None:
+        equity, closes = equity[equity.index >= trade_from], closes[closes.index >= trade_from]
+        start = trade_from
     return BacktestResult(
         engine=ENGINE_NAME,
         spec_name=spec.meta.name,
@@ -227,7 +240,7 @@ def run_prepared(
         starting_balance=starting_balance,
         trades=trades,
         funding=funding,
-        equity=equity_curve(trades, funding, closes, starting_balance),
+        equity=equity,
         closes=closes,
         wall_seconds=time.perf_counter() - t0,
         meta={"contract_spec": prep.contract.origin, "minutes": len(minutes), "base_bars": len(base)},
