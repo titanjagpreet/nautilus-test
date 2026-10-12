@@ -1,6 +1,8 @@
 """Inputs shared by both engines, so they see byte-identical numbers.
 
-* Which stored dataset backs each market (``BTC-PERP``, ``XAU-PERP``) and which funding series applies.
+* Which stored dataset backs each market (``BTC-PERP``, ``XAU-PERP``) and which funding series applies: the most
+  preferred one that covers the backtest window, so a short, recent history (Lighter's starts at its listing)
+  never silently truncates a longer backtest.
 * Prices rounded to the venue tick, once (Nautilus would round inside ``Price(...)``; doing it here keeps the
   fast engine on exactly the same prices).
 """
@@ -36,20 +38,56 @@ FUNDING_SOURCES: dict[str, list[tuple[str, str]]] = {
 }
 
 
-def available_bar_sources(market: str) -> list[str]:
-    stored = set(storage.list_datasets())
-    return [f"{s}/{y}" for s, y in BAR_SOURCES[market] if (s, y) in stored]
+COVERAGE_SLACK = pd.Timedelta(days=4)  # a window may start or end on a market closure (weekend + holiday)
+Ranges = dict[tuple[str, str], tuple[pd.Timestamp, pd.Timestamp]]
 
 
-def resolve_bar_source(market: str, source: str | None = None) -> tuple[str, str]:
-    options = available_bar_sources(market)
-    if not options:
+def _covers(span: tuple[pd.Timestamp, pd.Timestamp], start: pd.Timestamp, end: pd.Timestamp) -> bool:
+    return span[0] <= start + COVERAGE_SLACK and span[1] >= end - COVERAGE_SLACK
+
+
+def _describe(ranges: Ranges, options: list[tuple[str, str]]) -> str:
+    return "; ".join(f"{s}/{y} {ranges[s, y][0]:%Y-%m-%d} → {ranges[s, y][1]:%Y-%m-%d}" for s, y in options)
+
+
+def resolve_bar_source(
+    market: str, start: pd.Timestamp, end: pd.Timestamp, source: str | None = None
+) -> tuple[str, str]:
+    """``source`` if given, else the most preferred stored dataset that covers [start, end)."""
+    ranges = storage.time_ranges()
+    stored = [option for option in BAR_SOURCES[market] if option in ranges]
+    if not stored:
         raise FileNotFoundError(f"no stored bars for {market}; run `make data`")
-    chosen = source or options[0]
-    if chosen not in options:
-        raise ValueError(f"source {chosen!r} not available for {market}; available: {options}")
-    src, sym = chosen.split("/", 1)
-    return src, sym
+    if source is not None:
+        if tuple(source.split("/", 1)) not in stored:
+            raise ValueError(
+                f"source {source!r} not available for {market}; available: {_describe(ranges, stored)}"
+            )
+        src, sym = source.split("/", 1)
+        return src, sym
+    for option in stored:
+        if _covers(ranges[option], start, end):
+            return option
+    window = f"{start:%Y-%m-%d} → {end:%Y-%m-%d}"
+    raise ValueError(f"no stored {market} history covers {window}; available: {_describe(ranges, stored)}")
+
+
+def resolve_funding_source(
+    market: str, start: pd.Timestamp, end: pd.Timestamp
+) -> tuple[tuple[str, str], str] | None:
+    """The most preferred funding series covering [start, end), else the one overlapping it most — then funding is
+    charged only where it exists, and the label says so. ``None`` when no series overlaps the window."""
+    ranges = storage.time_ranges(config.funding_dir())
+    stored = [option for option in FUNDING_SOURCES[market] if option in ranges]
+    for option in stored:
+        if _covers(ranges[option], start, end):
+            return option, f"{option[0]}/{option[1]}"
+    overlap = {o: min(ranges[o][1], end) - max(ranges[o][0], start) for o in stored}
+    best = max(stored, key=lambda o: overlap[o], default=None)
+    if best is None or overlap[best] <= pd.Timedelta(0):
+        return None
+    lo, hi = ranges[best]
+    return best, f"{best[0]}/{best[1]} (partial: {max(lo, start):%Y-%m-%d} → {min(hi, end):%Y-%m-%d})"
 
 
 def round_to_tick(bars: pd.DataFrame, price_decimals: int) -> pd.DataFrame:
@@ -78,18 +116,15 @@ def load_market(
     price_decimals: int,
     source: str | None = None,
 ) -> MarketData:
-    src, sym = resolve_bar_source(market, source)
+    src, sym = resolve_bar_source(market, start, end, source)
     bars = round_to_tick(storage.read_bars(src, sym, start, end), price_decimals)
     if bars.empty:
         raise ValueError(f"no {src}/{sym} bars between {start} and {end}")
     empty = {"ts": pd.Series([], dtype="datetime64[ns, UTC]"), "rate": [], "period_hours": []}
     funding, funding_source = pd.DataFrame(empty), None
-    stored = set(storage.list_datasets(config.funding_dir()))
-    for f_src, f_sym in FUNDING_SOURCES[market]:
-        if (f_src, f_sym) in stored:
-            funding = storage.read_funding(f_src, f_sym, start, end)[["ts", "rate", "period_hours"]]
-            funding_source = f"{f_src}/{f_sym}"
-            break
+    if (chosen := resolve_funding_source(market, start, end)) is not None:
+        (f_src, f_sym), funding_source = chosen
+        funding = storage.read_funding(f_src, f_sym, start, end)[["ts", "rate", "period_hours"]]
     return MarketData(market, f"{src}/{sym}", bars.reset_index(drop=True), funding, funding_source)
 
 

@@ -27,8 +27,9 @@ Numbers below are from the run on **2026-10-12** in the build sandbox (last full
 ## 2. Source attempts in this environment
 
 The sandbox's egress proxy blocks the primary hosts (see PROGRESS.md Phase 0). The code for every primary source
-is implemented and runs as-is on an unrestricted machine; here each attempt was recorded and the next source
-tried. Nothing was synthesised.
+is implemented from its documented format, with its parsers unit-tested on documented sample rows, but it has
+**never run against the live hosts** — on an unrestricted machine it is tried first, and any failure is recorded
+and falls back to the next source, as here. Nothing was synthesised.
 
 | dataset | source tried (in order) | result here |
 |---|---|---|
@@ -42,6 +43,16 @@ tried. Nothing was synthesised.
 | BTC-PERP / XAU-PERP 1m + hourly funding | Lighter REST (mainnet.zklighter.elliot.ai) | blocked — **no Lighter data in this environment** |
 | XAU 1m long history | Dukascopy via dukascopy-node (jetta.dukascopy.com) | blocked |
 | | **HistData XAUUSD bid — GitHub re-uploads** | **used** |
+
+**Which dataset a backtest uses** (`engines/inputs.py`). Each market lists its sources in preference order —
+Lighter first (the target exchange), then the closest proxies (BTC: Binance futures, Binance spot, its GitHub
+republication, Bitstamp; XAU: Dukascopy, HistData). A backtest uses the most preferred dataset that **covers
+its whole window** (4 days of slack for weekends and holidays), so Lighter's short history — it starts at the
+market's listing — is used for recent windows and never silently truncates a longer one; when no dataset
+covers the window the run stops with each dataset's date range. Funding follows the same rule; when no series
+covers the window, the one overlapping it most is charged where it exists and labelled `(partial: …)`. The
+default window (UI, `make demo`) is the last three whole years of the most preferred source that has them,
+ending where a covering funding series ends (`api/services.default_window`).
 
 ## 3. Per-source details
 

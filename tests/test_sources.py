@@ -1,16 +1,20 @@
-"""Source parser tests. All inputs are tiny synthetic rows written here in each source's documented format."""
+"""Source parser tests and dataset selection. All inputs are tiny synthetic rows written here (labelled)."""
 
 from __future__ import annotations
 
+import datetime as dt
 import gzip
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
+from strategy_lab.api import services
+from strategy_lab.data import storage
 from strategy_lab.data.sources import binance, lighter
 from strategy_lab.data.sources import github_datasets as gh
 from strategy_lab.data.validate import find_gaps
+from strategy_lab.engines import inputs
 
 T0_MS = 1_704_067_200_000  # 2024-01-01 00:00:00 UTC
 
@@ -131,3 +135,111 @@ def test_lighter_market_spec_lookup() -> None:
     assert spec.created_at_ms == 1_735_689_600_000
     with pytest.raises(KeyError):
         lighter.parse_market_spec(details, "XAU")
+
+
+# --- which stored dataset backs a backtest window ------------------------------------------------------------
+
+
+def _series(source: str, symbol: str, start: str, end: str, freq: str, **cols: float) -> pd.DataFrame:
+    ts = pd.date_range(start, end, freq=freq, tz="UTC")
+    return pd.DataFrame({"ts": ts, **cols, "source": source, "symbol": symbol})
+
+
+@pytest.fixture
+def open_network_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """SYNTHETIC: what `make data` stores where every source works — a short Lighter history (from its listing)
+    next to Binance's long one. Flat prices; only the date ranges matter here."""
+    monkeypatch.setenv("STRATEGY_LAB_DATA_DIR", str(tmp_path))
+    price = {"open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 0.0}
+    storage.write_bars(_series("lighter", "BTC-PERP", "2026-01-01", "2026-02-28 23:59", "6h", **price))
+    storage.write_bars(_series("binance_futures", "BTCUSDT", "2023-01-01", "2026-02-28 23:59", "6h", **price))
+    storage.write_funding(
+        _series("lighter", "BTC-PERP", "2026-01-01", "2026-02-28 23:00", "1h", rate=1e-5, period_hours=1.0)
+    )
+    storage.write_funding(
+        _series("binance_futures", "BTCUSDT", "2023-01-01", "2025-12-31 16:00", "8h", rate=1e-4, period_hours=8.0)
+    )
+
+
+def ts(day: str) -> pd.Timestamp:
+    return pd.Timestamp(day, tz="UTC")
+
+
+@pytest.mark.usefixtures("open_network_store")
+def test_the_preferred_source_is_used_only_where_it_covers_the_window() -> None:
+    assert inputs.resolve_bar_source("BTC-PERP", ts("2026-01-05"), ts("2026-02-20")) == ("lighter", "BTC-PERP")
+    assert inputs.resolve_bar_source("BTC-PERP", ts("2024-01-01"), ts("2025-01-01")) == (
+        "binance_futures",
+        "BTCUSDT",
+    )
+    with pytest.raises(
+        ValueError,
+        match=r"no stored BTC-PERP history covers 2022-01-01 → 2023-06-01; available: "
+        r"lighter/BTC-PERP 2026-01-01 → 2026-02-28; binance_futures/BTCUSDT 2023-01-01 → 2026-02-28",
+    ):
+        inputs.resolve_bar_source("BTC-PERP", ts("2022-01-01"), ts("2023-06-01"))
+    explicit = inputs.resolve_bar_source("BTC-PERP", ts("2024-01-01"), ts("2025-01-01"), "lighter/BTC-PERP")
+    assert explicit == ("lighter", "BTC-PERP"), (
+        "an explicit choice is honoured (and fails later if it has no bars)"
+    )
+
+
+@pytest.mark.usefixtures("open_network_store")
+def test_funding_covers_the_window_or_is_labelled_partial() -> None:
+    full = inputs.resolve_funding_source("BTC-PERP", ts("2024-01-01"), ts("2025-01-01"))
+    assert full == (("binance_futures", "BTCUSDT"), "binance_futures/BTCUSDT")
+    partial = inputs.resolve_funding_source("BTC-PERP", ts("2025-06-01"), ts("2026-02-15"))
+    assert partial == (
+        ("binance_futures", "BTCUSDT"),
+        "binance_futures/BTCUSDT (partial: 2025-06-01 → 2025-12-31)",
+    )
+    assert inputs.resolve_funding_source("BTC-PERP", ts("2021-01-01"), ts("2022-01-01")) is None
+    market = inputs.load_market("BTC-PERP", ts("2024-01-01"), ts("2025-01-01"), price_decimals=1)
+    assert (market.source, market.funding_source) == ("binance_futures/BTCUSDT", "binance_futures/BTCUSDT")
+    assert market.bars_1m["ts"].min() == ts("2024-01-01")
+    assert len(market.funding) == 366 * 3
+
+
+def utc(text: str) -> dt.datetime:
+    return dt.datetime.fromisoformat(text).replace(tzinfo=dt.UTC)
+
+
+def source(name: str, first: str, last: str) -> dict[str, object]:
+    return {"source": name, "first": utc(first), "last": utc(last)}
+
+
+def test_default_window_takes_three_funded_years_from_the_preferred_source_that_has_them() -> None:
+    bars = [
+        source("lighter/BTC-PERP", "2026-01-01", "2026-09-30 23:59"),
+        source("binance_futures/BTCUSDT", "2019-09-08 17:57", "2026-09-30 23:59"),
+    ]
+    funding = [
+        source("lighter/BTC-PERP", "2026-01-01", "2026-10-12 09:00"),
+        source("binance_futures/BTCUSDT", "2019-09-10 08:00", "2026-09-30 16:00"),
+    ]
+    assert services.default_window(bars, funding) == {
+        "start": "2023-09-01",
+        "end": "2026-09-01",
+        "bars": "binance_futures/BTCUSDT",
+        "funding": "binance_futures/BTCUSDT",
+    }
+    gold = [source("histdata/XAUUSD", "2021-01-03 23:00", "2026-05-29 20:58")]
+    assert services.default_window(gold, []) == {
+        "start": "2023-05-01",
+        "end": "2026-05-01",
+        "bars": "histdata/XAUUSD",
+        "funding": None,
+    }
+    short = [source("lighter/BTC-PERP", "2025-03-15 12:00", "2026-09-30 23:59")]
+    short_funding = [source("lighter/BTC-PERP", "2025-03-15 12:00", "2026-10-12 09:00")]
+    assert services.default_window(short, short_funding) == {
+        "start": "2025-04-01",
+        "end": "2026-09-01",
+        "bars": "lighter/BTC-PERP",
+        "funding": "lighter/BTC-PERP",
+    }, "without three years anywhere, the longest window"
+    gold_with_lighter_funding = [source("lighter/XAU-PERP", "2026-02-01", "2026-10-12 09:00")]
+    assert services.default_window(gold, gold_with_lighter_funding)["funding"] is None, (
+        "three years beat full funding"
+    )
+    assert services.default_window([], []) is None

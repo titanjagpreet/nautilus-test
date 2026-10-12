@@ -317,6 +317,14 @@ endpoints; synthetic data only in tests, labelled.
 NautilusTrader measurements, parity and speed tables, lab results, AI design and data-location note),
 ARCHITECTURE (AI, lab, API/jobs sections), LEARNINGS §15–17, `make demo`.
 
+**Found while preparing the first run on an open network:** a backtest used the most preferred *stored*
+dataset whatever its dates. With Lighter data present (it starts at each market's listing) the demo's 2024
+backtest would have failed and a 3-year window would have been silently cut to Lighter's months; funding was
+picked the same way. Never visible here (Lighter is blocked). Now a dataset is used only if it covers the
+window (else a clear error listing every dataset's range); funding falls back to the best partial series,
+labelled; the default window is chosen to match (`tests/test_sources.py`, synthetic store). Same windows and
+results on this machine's data; `make demo` re-run (38 s).
+
 **Benchmark complete:** NautilusTrader's 1,600-run sweep took 10,327 s on 1 core and 2,522 s on 4 (3.4 GB
 peak), vs 48.5 s / 15.2 s for the fast engine; the REPORT verdict quotes them. The fast engine's "cold" row
 was relabelled: it loads compiled code from Numba's cache (0.29 s); a first run that compiles takes 3.4 s.

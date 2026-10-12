@@ -49,35 +49,61 @@ def coverage() -> dict[str, Any]:
         table: dict[tuple[str, str], tuple[Any, Any, int]], options: list[tuple[str, str]]
     ) -> list[dict[str, Any]]:
         return [
-            {
-                "source": f"{s}/{y}",
-                "first": table[(s, y)][0].isoformat(),
-                "last": table[(s, y)][1].isoformat(),
-                "rows": table[(s, y)][2],
-                "used": i == 0,
-            }
-            for i, (s, y) in enumerate([o for o in options if o in table])
+            {"source": f"{s}/{y}", "first": table[s, y][0], "last": table[s, y][1], "rows": table[s, y][2]}
+            for s, y in options
+            if (s, y) in table
         ]
 
-    markets = {
-        m: {"bars": describe(bars, BAR_SOURCES[m]), "funding": describe(funding, FUNDING_SOURCES[m])}
-        for m in BAR_SOURCES
-    }
+    markets: dict[str, Any] = {}
+    for m in BAR_SOURCES:
+        info = {"bars": describe(bars, BAR_SOURCES[m]), "funding": describe(funding, FUNDING_SOURCES[m])}
+        window = default_window(info["bars"], info["funding"])
+        for kind in ("bars", "funding"):
+            for src in info[kind]:
+                src["used"] = window is not None and window[kind] == src["source"]
+                src["first"], src["last"] = src["first"].isoformat(), src["last"].isoformat()
+        markets[m] = info | {"default": window}
     return {"markets": markets}
 
 
+def _month_ceil(ts: dt.datetime) -> dt.date:
+    """The first whole month at or after ``ts``."""
+    if (ts.day, ts.hour, ts.minute, ts.second) == (1, 0, 0, 0):
+        return ts.date()
+    return dt.date(ts.year + ts.month // 12, ts.month % 12 + 1, 1)
+
+
+def default_window(bars: list[dict[str, Any]], funding: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """The last three whole years of the most preferred bar source that has them, ending where a funding series
+    covering the whole window ends (so every month carries funding costs) — or, when no funding series reaches
+    back three years (gold: only Lighter's, from its listing), three years without full funding: the engines then
+    charge funding where it exists and label it partial. Without three years anywhere, the longest window.
+    ``bars``/``funding``: sources in preference order with ``first``/``last`` timestamps. The engines pick the
+    same bar source for that window (``engines.inputs``)."""
+    best: dict[str, Any] | None = None
+    for b in bars:
+        for f in [*funding, None]:
+            last = min(b["last"], f["last"]) if f else b["last"]
+            end = dt.date(last.year, last.month, 1)
+            full = dt.date(end.year - 3, end.month, 1)
+            start = max(full, _month_ceil(b["first"]), *([_month_ceil(f["first"])] if f else []))
+            if start >= end:
+                continue
+            window = {"start": start.isoformat(), "end": end.isoformat(), "bars": b["source"]}
+            window["funding"] = f["source"] if f else None
+            if start == full:
+                return window
+            if best is None or end - start > dt.date.fromisoformat(best["end"]) - dt.date.fromisoformat(
+                best["start"]
+            ):
+                best = window
+    return best
+
+
 def default_range(market: str) -> tuple[str, str]:
-    """A sensible backtest window: the last three whole years of the market's primary source, ending where its
-    funding history ends too (so every month carries funding costs)."""
-    info = coverage().get("markets", {}).get(market, {})
-    bars, funding = info.get("bars", []), info.get("funding", [])
-    if not bars:
-        return "2024-01-01", "2025-01-01"
-    last = min(dt.date.fromisoformat(src[0]["last"][:10]) for src in (bars, funding) if src)
-    end = dt.date(last.year, last.month, 1)
-    first = dt.date.fromisoformat(bars[0]["first"][:10])
-    start = max(dt.date(end.year - 3, end.month, 1), dt.date(first.year, first.month, 1))
-    return start.isoformat(), end.isoformat()
+    """The default backtest window for ``market`` (``default_window``); 2024 when no data is stored."""
+    window = coverage().get("markets", {}).get(market, {}).get("default")
+    return (window["start"], window["end"]) if window else ("2024-01-01", "2025-01-01")
 
 
 def library(store: Store) -> list[dict[str, Any]]:

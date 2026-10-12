@@ -116,6 +116,23 @@ def list_datasets(root: Path | None = None) -> list[tuple[str, str]]:
     return pairs
 
 
+def time_ranges(root: Path | None = None) -> dict[tuple[str, str], tuple[pd.Timestamp, pd.Timestamp]]:
+    """First and last timestamp (UTC) of every (source, symbol) stored under ``root`` (default: 1m bars)."""
+    base = root or config.bars_dir()
+    if not any(base.glob("source=*/symbol=*/year=*/*.parquet")):
+        return {}
+    pattern = (base / "source=*" / "symbol=*" / "year=*" / "*.parquet").as_posix()
+    rows = (
+        duckdb.connect()
+        .execute(
+            f"SELECT source, symbol, min(ts), max(ts) FROM read_parquet('{pattern}', hive_partitioning = true) "
+            "GROUP BY 1, 2"
+        )
+        .fetchall()
+    )
+    return {(s, y): (pd.Timestamp(lo).tz_convert("UTC"), pd.Timestamp(hi).tz_convert("UTC")) for s, y, lo, hi in rows}
+
+
 def duckdb_connection() -> duckdb.DuckDBPyConnection:
     """In-memory DuckDB with views ``bars_1m``, ``funding`` and ``bars_<tf>`` over the Parquet store."""
     con = duckdb.connect()
