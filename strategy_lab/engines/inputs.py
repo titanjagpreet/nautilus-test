@@ -91,3 +91,12 @@ def load_market(
             funding_source = f"{f_src}/{f_sym}"
             break
     return MarketData(market, f"{src}/{sym}", bars.reset_index(drop=True), funding, funding_source)
+
+
+def funding_8h(funding: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """Funding times (ns) and rates scaled to an 8-hour period (the spec's ``funding_rate`` input)."""
+    if funding.empty:
+        return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.float64)
+    ts = funding["ts"].dt.as_unit("ns").astype("int64").to_numpy()
+    rate = (funding["rate"] * 8.0 / funding["period_hours"]).to_numpy(dtype=np.float64)
+    return ts, rate

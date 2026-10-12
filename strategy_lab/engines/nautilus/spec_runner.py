@@ -4,32 +4,22 @@ from __future__ import annotations
 
 import time
 
-import numpy as np
 import pandas as pd
 
 from strategy_lab.costs import MAX_SLIPPAGE_TICKS
 from strategy_lab.data.resample import resample_bars
 from strategy_lab.data.schema import TIMEFRAMES
-from strategy_lab.engines.inputs import MarketData, load_market
+from strategy_lab.engines.contracts import contract_spec
+from strategy_lab.engines.inputs import MarketData, funding_8h, load_market
 from strategy_lab.engines.nautilus import patches
 from strategy_lab.engines.nautilus.data_loading import bar_type_for
 from strategy_lab.engines.nautilus.exec_feed import BarArrays, execution_stream
-from strategy_lab.engines.nautilus.instruments import contract_spec
 from strategy_lab.engines.nautilus.spec_strategy import SpecStrategy
 from strategy_lab.engines.nautilus.venue import VenueSettings, add_lighter_venue, new_engine
-from strategy_lab.engines.results import BacktestResult, equity_curve, trades_frame
+from strategy_lab.engines.results import BacktestResult, attribute_funding, equity_curve, trades_frame
 from strategy_lab.spec.schema import StrategySpec
 
 ENGINE_NAME = "nautilus"
-
-
-def funding_8h(funding: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
-    """Funding times (ns) and rates scaled to an 8-hour period (the spec's ``funding_rate`` input)."""
-    if funding.empty:
-        return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.float64)
-    ts = funding["ts"].dt.as_unit("ns").astype("int64").to_numpy()
-    rate = (funding["rate"] * 8.0 / funding["period_hours"]).to_numpy(dtype=np.float64)
-    return ts, rate
 
 
 def run_spec(
@@ -145,6 +135,7 @@ def run_spec(
         trades=trades,
         funding=funding,
         equity=equity_curve(trades, funding, closes, starting_balance),
+        closes=closes,
         wall_seconds=time.perf_counter() - t0,
         meta={
             "contract_spec": contract.origin,
@@ -153,22 +144,3 @@ def run_spec(
             "base_bars": len(base),
         },
     )
-
-
-def attribute_funding(trades: pd.DataFrame, funding: pd.DataFrame) -> None:
-    """Add each funding payment to the trade that held the position when it was charged (in place).
-
-    Fill times are minute-open times; a trade covers funding time F when entry < F ≤ exit (a position entered
-    at F's minute opened after F, one exiting in F's minute was still held at F).
-    """
-    if trades.empty or funding.empty:
-        return
-    totals = np.zeros(len(trades))
-    entry = trades["entry_time"].dt.as_unit("ns").astype("int64").to_numpy()
-    exit_ = trades["exit_time"].dt.as_unit("ns").astype("int64").to_numpy()
-    for ts, amount in zip(funding["ts"].dt.as_unit("ns").astype("int64"), funding["amount"], strict=True):
-        hit = np.flatnonzero((entry < ts) & (ts <= exit_))
-        if len(hit):
-            totals[hit[0]] += amount
-    trades["funding"] = totals
-    trades["pnl_net"] = trades["pnl_gross"] - trades["fees"] - trades["funding"]

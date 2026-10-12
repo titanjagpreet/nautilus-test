@@ -1,0 +1,402 @@
+[
+  {
+    "strategy": "EMA crossover",
+    "fee_profile": "lighter_standard",
+    "trades": [
+      198,
+      198
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      -440.4338,
+      -440.4338
+    ],
+    "net_pnl_rel_diff": 0.0,
+    "fees_rel_diff": 0.0,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      11.27,
+      0.246
+    ]
+  },
+  {
+    "strategy": "EMA crossover",
+    "fee_profile": "lighter_premium",
+    "trades": [
+      198,
+      198
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      -619.6243,
+      -619.6243
+    ],
+    "net_pnl_rel_diff": 1.6138640831164837e-11,
+    "fees_rel_diff": 5.5858333825305125e-11,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      11.63,
+      0.082
+    ]
+  },
+  {
+    "strategy": "RSI mean reversion with trend filter",
+    "fee_profile": "lighter_standard",
+    "trades": [
+      34,
+      34
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      11.9272,
+      11.9272
+    ],
+    "net_pnl_rel_diff": 0.0,
+    "fees_rel_diff": 0.0,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      6.26,
+      0.114
+    ]
+  },
+  {
+    "strategy": "RSI mean reversion with trend filter",
+    "fee_profile": "lighter_premium",
+    "trades": [
+      34,
+      34
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      -26.0939,
+      -26.0939
+    ],
+    "net_pnl_rel_diff": 0.0,
+    "fees_rel_diff": 0.0,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      6.13,
+      0.119
+    ]
+  },
+  {
+    "strategy": "Donchian breakout",
+    "fee_profile": "lighter_standard",
+    "trades": [
+      58,
+      58
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      1518.9763,
+      1518.9763
+    ],
+    "net_pnl_rel_diff": 0.0,
+    "fees_rel_diff": 0.0,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      16.73,
+      0.078
+    ]
+  },
+  {
+    "strategy": "Donchian breakout",
+    "fee_profile": "lighter_premium",
+    "trades": [
+      58,
+      58
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      1444.1896,
+      1444.1896
+    ],
+    "net_pnl_rel_diff": 6.924382966885275e-12,
+    "fees_rel_diff": 1.399331789127673e-10,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      16.47,
+      0.08
+    ]
+  },
+  {
+    "strategy": "Bollinger squeeze breakout",
+    "fee_profile": "lighter_standard",
+    "trades": [
+      211,
+      211
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      132.0488,
+      132.0488
+    ],
+    "net_pnl_rel_diff": 0.0,
+    "fees_rel_diff": 0.0,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      8.33,
+      0.117
+    ]
+  },
+  {
+    "strategy": "Bollinger squeeze breakout",
+    "fee_profile": "lighter_premium",
+    "trades": [
+      211,
+      211
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      -75.7327,
+      -75.7327
+    ],
+    "net_pnl_rel_diff": 1.3204337621756396e-10,
+    "fees_rel_diff": 4.793178869771475e-11,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      7.43,
+      0.091
+    ]
+  },
+  {
+    "strategy": "MACD with higher-timeframe EMA filter",
+    "fee_profile": "lighter_standard",
+    "trades": [
+      1430,
+      1430
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      4.6725,
+      4.6725
+    ],
+    "net_pnl_rel_diff": 0.0,
+    "fees_rel_diff": 0.0,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      21.64,
+      0.282
+    ]
+  },
+  {
+    "strategy": "MACD with higher-timeframe EMA filter",
+    "fee_profile": "lighter_premium",
+    "trades": [
+      1430,
+      1430
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      -1374.954,
+      -1374.954
+    ],
+    "net_pnl_rel_diff": 2.1818846223551262e-11,
+    "fees_rel_diff": 2.190155144007883e-11,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      20.79,
+      0.26
+    ]
+  },
+  {
+    "strategy": "Keltner pullback",
+    "fee_profile": "lighter_standard",
+    "trades": [
+      377,
+      377
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      1512.7427,
+      1512.7427
+    ],
+    "net_pnl_rel_diff": 0.0,
+    "fees_rel_diff": 0.0,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      15.07,
+      0.083
+    ]
+  },
+  {
+    "strategy": "Keltner pullback",
+    "fee_profile": "lighter_premium",
+    "trades": [
+      377,
+      377
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      1080.0294,
+      1080.0294
+    ],
+    "net_pnl_rel_diff": 1.8517818069903678e-11,
+    "fees_rel_diff": 5.098654778142548e-11,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      15.26,
+      0.084
+    ]
+  },
+  {
+    "strategy": "Stochastic oversold with ADX filter",
+    "fee_profile": "lighter_standard",
+    "trades": [
+      73,
+      73
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      -125.7046,
+      -125.7046
+    ],
+    "net_pnl_rel_diff": 0.0,
+    "fees_rel_diff": 0.0,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      7.51,
+      0.169
+    ]
+  },
+  {
+    "strategy": "Stochastic oversold with ADX filter",
+    "fee_profile": "lighter_premium",
+    "trades": [
+      73,
+      73
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      -203.7015,
+      -203.7015
+    ],
+    "net_pnl_rel_diff": 0.0,
+    "fees_rel_diff": 0.0,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      6.99,
+      0.097
+    ]
+  },
+  {
+    "strategy": "Funding-rate fade",
+    "fee_profile": "lighter_standard",
+    "trades": [
+      18,
+      18
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      232.1317,
+      232.1317
+    ],
+    "net_pnl_rel_diff": 0.0,
+    "fees_rel_diff": 0.0,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      2.7,
+      0.4
+    ]
+  },
+  {
+    "strategy": "Funding-rate fade",
+    "fee_profile": "lighter_premium",
+    "trades": [
+      18,
+      18
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      215.2479,
+      215.2479
+    ],
+    "net_pnl_rel_diff": 0.0,
+    "fees_rel_diff": 0.0,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      2.5,
+      0.071
+    ]
+  },
+  {
+    "strategy": "VWAP reversion",
+    "fee_profile": "lighter_standard",
+    "trades": [
+      1075,
+      1075
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      -510.2893,
+      -510.2893
+    ],
+    "net_pnl_rel_diff": 0.0,
+    "fees_rel_diff": 0.0,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      16.24,
+      0.2
+    ]
+  },
+  {
+    "strategy": "VWAP reversion",
+    "fee_profile": "lighter_premium",
+    "trades": [
+      1075,
+      1075
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      -1586.6238,
+      -1586.6238
+    ],
+    "net_pnl_rel_diff": 3.151355238512991e-11,
+    "fees_rel_diff": 4.6122531788843265e-11,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      17.47,
+      0.124
+    ]
+  },
+  {
+    "strategy": "Gold session breakout (XAU)",
+    "fee_profile": "lighter_standard",
+    "trades": [
+      213,
+      213
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      38.9954,
+      38.9954
+    ],
+    "net_pnl_rel_diff": 0.0,
+    "fees_rel_diff": 0.0,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      6.46,
+      0.078
+    ]
+  },
+  {
+    "strategy": "Gold session breakout (XAU)",
+    "fee_profile": "lighter_premium",
+    "trades": [
+      213,
+      213
+    ],
+    "identical_trades": true,
+    "net_pnl": [
+      -161.7395,
+      -161.7395
+    ],
+    "net_pnl_rel_diff": 0.0,
+    "fees_rel_diff": 0.0,
+    "funding_rel_diff": 0.0,
+    "wall_s": [
+      6.13,
+      0.092
+    ]
+  }
+]

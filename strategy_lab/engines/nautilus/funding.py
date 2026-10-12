@@ -23,6 +23,8 @@ from nautilus_trader.model.currencies import USDC
 from nautilus_trader.model.identifiers import InstrumentId
 from nautilus_trader.model.objects import Money
 
+from strategy_lab.spec.decisions import round_price
+
 
 @dataclass(frozen=True)
 class FundingPayment:
@@ -61,7 +63,8 @@ class FundingModule(SimulationModule):  # type: ignore[misc]
         bid, ask = book.best_bid_price(), book.best_ask_price()
         if bid is None or ask is None:
             return  # no price yet: nothing has traded, so no position can exist either
-        price = (bid.as_double() + ask.as_double()) / 2.0
+        decimals = self.exchange.instruments[self._instrument_id].price_precision
+        price = round_price((bid.as_double() + ask.as_double()) / 2.0, decimals)  # decimal value (LEARNINGS §13)
         amount = size * price * rate
         self.exchange.adjust_account(Money(-amount, USDC))
         self.payments.append(FundingPayment(pd.Timestamp(ts_ns, tz="UTC"), rate, size, price, amount))

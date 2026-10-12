@@ -15,9 +15,10 @@ from nautilus_trader.model.instruments import CryptoPerpetual
 from nautilus_trader.model.objects import Money
 
 from strategy_lab.costs import fee_profile
+from strategy_lab.engines.contracts import MarketSymbol
 from strategy_lab.engines.nautilus.fill_model import MarketAndStopSlippageFillModel
 from strategy_lab.engines.nautilus.funding import FundingModule
-from strategy_lab.engines.nautilus.instruments import VENUE, MarketSymbol, make_instrument
+from strategy_lab.engines.nautilus.instruments import VENUE, make_instrument
 
 
 @dataclass(frozen=True)

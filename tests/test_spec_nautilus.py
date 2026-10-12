@@ -28,7 +28,8 @@ def test_catalogue_strategy_runs_in_nautilus(path: Path) -> None:
     assert (trades["exit_time"] >= trades["entry_time"]).all()
     assert (trades["quantity"] > 0).all()
     # Our trade ledger + funding ledger reproduce Nautilus's own account balance.
-    assert result.meta["nautilus_final_balance"] == pytest.approx(result.starting_balance + result.net_pnl, abs=1e-6)
+    expected_balance = result.starting_balance + result.net_pnl
+    assert result.meta["nautilus_final_balance"] == pytest.approx(expected_balance, abs=1e-6)
     if spec.market.direction == "long":
         assert set(trades["side"]) <= {"long"}
     assert (trades["fees"] >= 0).all()

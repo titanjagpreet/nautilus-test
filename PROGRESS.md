@@ -9,7 +9,7 @@ Running log of what is done, measured numbers, problems and decisions. Updated a
 - [x] The hand-written Nautilus strategy runs with fees, slippage and funding visible; speed and memory measured.
 - [x] Spec schema, validator (look-ahead and higher-timeframe guards), plain-language renderer, 10 catalogue strategies.
 - [x] SpecStrategy runs any valid spec in Nautilus.
-- [ ] The fast engine matches Nautilus on all 10 catalogue strategies within the stated tolerance, or every difference is documented.
+- [x] The fast engine matches Nautilus on all 10 catalogue strategies within the stated tolerance, or every difference is documented.
 - [ ] AI generate, edit, explain and from_pine work through the provider layer (DeepSeek default, Kimi alternative, Claude Haiku optional) with validation and repair, escalation, caching and cost logging.
 - [ ] The eval has run on every provider with a key; the comparison and recommendation are in REPORT.md; total API spend is under budget.
 - [ ] The lab works: out-of-sample, walk-forward, heat-map, Monte Carlo, score with its parts, warnings.
@@ -172,3 +172,35 @@ section whose only valid values are the safe ones — the unsafe ones exist so P
 definitions where Nautilus's defaults differ (RSI → Wilder ×100, ATR → Wilder, WMA → linear weights,
 Stochastics %D → SMA, ROC → n+1 window, VWAP → bar-open session); ADX, OBV and highest/lowest are ours.
 No warm-up padding: indicators warm up inside the requested range in both engines.
+
+## Phase 4 — the fast engine (2026-10-12)
+
+**Acceptance:** parity on all 10 catalogue strategies ✅ — same trades, same timestamps, net P&L within 0.5%
+(`tests/test_parity.py`: 10 strategies × 2 fee profiles + 7 risk-feature variants, 2024-H1; `make parity`:
+the full year 2024). `make bench` table in REPORT.md: fast engine ✅, Nautilus ⏳ (running, ~6 h).
+
+**Built** (`strategy_lab/engines/fast/`): Numba ports of all 18 indicators, bit-identical to Nautilus's
+(NumPy's pairwise summation ported for the SMA family, sequential sums where Nautilus uses them, the same EMA
+seeding); a vectorised compiler that turns a spec's condition tree into boolean arrays with the same
+availability rules as the streaming evaluator; one jitted loop over 1-minute bars that implements the
+execution semantics of ARCHITECTURE.md (gap check at the open, stop before target, trailing update at bar
+close, funding, cooldown, daily cap, end-of-data close). `engines/contracts.py` holds the engine-neutral
+contract specs so that fast-engine processes never import Nautilus. `lab/metrics.py` (all metrics from the
+engine-neutral result) and `lab/sweep.py` (grid sweeps on either engine, 1 process or a spawn-based pool).
+
+**Parity, one year (2024, real data), both fee profiles — 20 runs:** trades identical in all 20 (count, entry
+and exit times, side, exit reason); largest relative difference in net P&L 1.3e-10, fees 1.4e-10, funding 0.
+The residue is float64 accumulation order (the fast engine sums in float64, Nautilus books fixed-point
+`Money`); in USDC it is below 1e-7. Nautilus 223 s for the 20 runs, the fast engine 2.9 s (×78).
+
+**Fast-engine speed** (REPORT.md): one year of 1-minute execution 0.10 s warm (0.29 s from a cold process
+with the Numba on-disk cache); 1,600-run sweep 48.5 s on 1 core, 15.2 s on 4.
+
+**Problems found and fixed.**
+- One take-profit one tick apart in 108 trades → `Price.as_double()` is one ulp off the decimal for large
+  raw values; canonicalise prices on the tick grid (LEARNINGS §13). Parity is now exact.
+- Trailing stop tightened into a gapped market: Nautilus rejects the modify and keeps the old stop
+  (LEARNINGS §14) → the fast engine mirrors it; the spec strategy reads the live trigger price.
+- Fast-engine sweep workers each imported Nautilus (≈870 MB per process) through a shared helper module →
+  engine-neutral `contracts.py`, helpers moved to `engines/inputs.py` / `engines/results.py`, lazy Nautilus
+  imports: ≈480–550 MB per worker.

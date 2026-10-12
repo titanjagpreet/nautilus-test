@@ -3,7 +3,7 @@ SHELL := /bin/bash
 UV ?= uv
 PY := $(UV) run python
 
-.PHONY: help setup network data lint test
+.PHONY: help setup network data lint test bench parity
 
 help:  ## Show this help
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-10s %s\n", $$1, $$2}'
@@ -22,7 +22,13 @@ data:  ## Download, validate and resample BTC/XAU history; writes data/quality_r
 lint:  ## ruff + mypy
 	$(UV) run ruff check .
 	$(UV) run ruff format --check .
-	$(UV) run mypy strategy_lab scripts
+	$(UV) run mypy strategy_lab scripts benchmarks
 
 test:  ## Run the test suite
 	$(UV) run pytest -n auto
+
+bench:  ## Speed + memory of both engines (1 backtest, 144 and 1,600-run sweeps; hours) -> REPORT.md
+	$(PY) benchmarks/bench.py
+
+parity:  ## Fast engine vs Nautilus on the 10 catalogue strategies over 2024 -> REPORT.md
+	$(PY) benchmarks/parity_report.py

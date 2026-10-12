@@ -220,3 +220,27 @@ What this says:
   strategies over long periods.
 * Parameter sweeps of hundreds of combinations are therefore impractical in Nautilus (≈ 0.5–2 min per run);
   that is what the Numba engine (Phase 4) is for.
+
+## 13. Prices are fixed-point integers — `as_double()` is not the decimal
+
+`Price`, `Quantity` and `Money` hold a 128-bit integer with 16 implied decimals. `Price.as_double()` converts
+`raw as f64 / 1e16`; for a large raw value that conversion can land **one ulp away from the decimal**:
+`Price(65031.3, 1).as_double()` returns `65031.299999999996`. Comparisons inside the venue are exact (integer),
+but strategy code that does arithmetic on `as_double()` values can round differently at a half-tick. Found by
+the parity suite: a take-profit computed as `entry + 1.5 × risk` from a fill price landed one tick lower in
+Nautilus than in the fast engine on one trade out of 108 (Δ 0.003 USDC). Fix: treat every price as a decimal on
+the tick grid — `round_price(price.as_double(), precision)` gives the nearest double of the decimal — in the
+spec strategy and the funding module. After that, P&L parity became exact.
+
+Similarly, `Money` amounts are rounded to the currency precision (USDC: 8 decimals) when they are booked: our
+funding ledger keeps the raw amount, the account receives the rounded one; the fast engine mirrors both.
+
+## 14. Modifying a stop into the market is rejected (even with `reject_stop_orders=False`)
+
+`reject_stop_orders=False` only applies to *new* stop orders (they then fill immediately). A **modify** whose new
+trigger is already through the market is always rejected (`OrderModifyRejected: new stop px … was in the
+market`; `OrderMatchingEngine._update_stop_market_order` checks `is_stop_triggered`: a SELL stop triggers when
+`bid <= trigger`, a BUY stop when `ask >= trigger`, both inclusive). The old stop stays active. Consequences:
+* a trailing stop that should have tightened above a gapped-down open keeps its old level — strategy code must
+  read the live trigger price (`order.trigger_price`) rather than remember what it asked for;
+* the fast engine reproduces the rejection (`engines/fast/simulate.py`, step 3c).

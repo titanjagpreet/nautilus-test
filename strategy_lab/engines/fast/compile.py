@@ -151,7 +151,9 @@ class Compiled:
         htf: dict[str, BarFrame],
         funding_ns: npt.NDArray[np.int64],
         funding_rate_8h: F64,
+        cache: dict[tuple[object, ...], dict[str, F64]] | None = None,
     ) -> None:
+        """``cache`` (optional) memoises indicator outputs across runs on the same data, e.g. in sweeps."""
         self.spec = spec
         self.n = len(base)
         identity = np.arange(self.n, dtype=np.int64)
@@ -164,7 +166,13 @@ class Compiled:
                 frame = htf[tf]
                 # latest HTF bar whose close is at or before the base bar's close
                 index = np.searchsorted(frame.close_ns, base.close_ns, side="right").astype(np.int64) - 1
-            for output, values in compute_indicator(ind, frame).items():
+            key = (ind.type, tuple(sorted(ind.params.items())), ind.source, tf)
+            outputs = cache.get(key) if cache is not None else None
+            if outputs is None:
+                outputs = compute_indicator(ind, frame)
+                if cache is not None:
+                    cache[key] = outputs
+            for output, values in outputs.items():
                 self.series[(ind.id, output)] = OperandSource(values, index)
         for field in ("open", "high", "low", "close", "volume", "hl2", "hlc3", "ohlc4"):
             self.series[("$input", field)] = OperandSource(base.field(field), identity)

@@ -21,6 +21,7 @@ import pandas as pd
 
 from strategy_lab import config
 from strategy_lab.data.resample import resample_bars
+from strategy_lab.engines.contracts import contract_spec
 from strategy_lab.engines.inputs import load_market
 from strategy_lab.engines.nautilus import patches
 from strategy_lab.engines.nautilus.data_loading import (
@@ -30,7 +31,6 @@ from strategy_lab.engines.nautilus.data_loading import (
     write_catalog,
 )
 from strategy_lab.engines.nautilus.ema_strategy import EmaCrossBracket, EmaCrossBracketConfig
-from strategy_lab.engines.nautilus.instruments import contract_spec
 from strategy_lab.engines.nautilus.reports import NautilusRunReport, collect
 from strategy_lab.engines.nautilus.venue import VenueSettings, add_lighter_venue, new_engine
 

@@ -49,6 +49,7 @@ class BacktestResult:
     trades: pd.DataFrame  # TRADE_COLUMNS
     funding: pd.DataFrame  # ts, rate, position_size, price, amount (positive = paid)
     equity: pd.Series  # indexed by base-bar close time
+    closes: pd.Series  # base-bar closes, same index (benchmarks, charts)
     wall_seconds: float = 0.0
     meta: dict[str, Any] = field(default_factory=dict)
 
@@ -131,3 +132,22 @@ def equity_curve(
         np.add.at(cash_delta, i_pay, -_floats(funding, "amount"))
     cash = starting_balance + np.cumsum(cash_delta)[:-1]
     return pd.Series(cash + unrealised, index=closes.index, name="equity")
+
+
+def attribute_funding(trades: pd.DataFrame, funding: pd.DataFrame) -> None:
+    """Add each funding payment to the trade that held the position when it was charged (in place).
+
+    Fill times are minute-open times; a trade covers funding time F when entry < F ≤ exit (a position entered
+    at F's minute opened after F, one exiting in F's minute was still held at F).
+    """
+    if trades.empty or funding.empty:
+        return
+    totals = np.zeros(len(trades))
+    entry = trades["entry_time"].dt.as_unit("ns").astype("int64").to_numpy()
+    exit_ = trades["exit_time"].dt.as_unit("ns").astype("int64").to_numpy()
+    for ts, amount in zip(funding["ts"].dt.as_unit("ns").astype("int64"), funding["amount"], strict=True):
+        hit = np.flatnonzero((entry < ts) & (ts <= exit_))
+        if len(hit):
+            totals[hit[0]] += amount
+    trades["funding"] = totals
+    trades["pnl_net"] = trades["pnl_gross"] - trades["fees"] - trades["funding"]

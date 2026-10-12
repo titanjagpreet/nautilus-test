@@ -1,0 +1,35 @@
+{
+  "_meta": {
+    "cpus": 4,
+    "ram_gb": 15.7,
+    "workload": "EMA crossover, BTC-PERP 1h on 1m execution, 2024-01-01 \u2192 2025-01-01"
+  },
+  "single/fast/cold (incl. JIT compile)": {
+    "wall_s": 0.29,
+    "peak_rss_mb": 481.7
+  },
+  "single/fast/warm": {
+    "wall_s": 0.1,
+    "peak_rss_mb": 483.3
+  },
+  "sweep_144/fast/1 core": {
+    "wall_s": 4.93,
+    "peak_rss_mb": 491.4
+  },
+  "sweep_144/fast/4 cores": {
+    "wall_s": 3.92,
+    "peak_rss_mb": 2223.8
+  },
+  "sweep_1600/fast/1 core": {
+    "wall_s": 48.46,
+    "peak_rss_mb": 425.3
+  },
+  "sweep_1600/fast/4 cores": {
+    "wall_s": 15.15,
+    "peak_rss_mb": 2277.5
+  },
+  "single/nautilus": {
+    "wall_s": 11.55,
+    "peak_rss_mb": 677.2
+  }
+}

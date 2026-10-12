@@ -36,6 +36,7 @@ from strategy_lab.spec.decisions import (
     decide,
     entry_quantity,
     risk_atr_periods,
+    round_price,
     stop_price,
     structure_lookback,
     target_price,
@@ -87,7 +88,6 @@ class SpecStrategy(Strategy):  # type: ignore[misc]
         self.pending: tuple[str, RiskInputs] | None = None
         self.stop_id: ClientOrderId | None = None
         self.target_id: ClientOrderId | None = None
-        self.stop_level = 0.0
         self.exit_reason: str | None = None
         self.closed: list[dict[str, Any]] = []
         self._open: dict[str, Any] | None = None
@@ -175,14 +175,14 @@ class SpecStrategy(Strategy):  # type: ignore[misc]
         if decision.exit:
             self.expected_side = "flat"
         elif self.trade.side != "flat" and self.stop_id is not None:
-            new_stop = tighter(
-                self.trade.side,
-                self.stop_level,
-                trailing_candidate(self.spec, self.trade.side, inputs, self.price_decimals),
-            )
             order = self.cache.order(self.stop_id)
-            if new_stop is not None and order is not None and order.is_open:
-                self.stop_level = new_stop
+            if order is None or not order.is_open:
+                return
+            # Compare with the venue's live trigger: a modify that was already in the market got rejected.
+            current = order.trigger_price.as_double()
+            candidate = trailing_candidate(self.spec, self.trade.side, inputs, self.price_decimals)
+            new_stop = tighter(self.trade.side, current, candidate)
+            if new_stop is not None:
                 self.modify_order(order, trigger_price=Price(new_stop, self.price_decimals))
 
     def _exit(self, reason: str) -> None:
@@ -199,6 +199,12 @@ class SpecStrategy(Strategy):  # type: ignore[misc]
                 )
             )
 
+    def _px(self, price: Price) -> float:
+        """Nautilus prices are 128-bit fixed point; ``as_double()`` can be one ulp off the decimal value (e.g.
+        65031.299999999996). Use the nearest double of the decimal so both engines compute stops and targets
+        from the same number (LEARNINGS.md §13)."""
+        return round_price(price.as_double(), self.price_decimals)
+
     def _position(self) -> Any:
         positions = self.cache.positions_open(instrument_id=self.instrument.id, strategy_id=self.id)
         return positions[0] if positions else None
@@ -209,7 +215,7 @@ class SpecStrategy(Strategy):  # type: ignore[misc]
         if event.client_order_id in self.entry_ids and self.pending is not None:
             side, inputs = self.pending
             self.pending = None
-            fill = event.last_px.as_double()
+            fill = self._px(event.last_px)
             self.trade.side = side
             self.trade.bars_held = 0
             stop = stop_price(self.spec, side, fill, inputs, self.price_decimals)
@@ -219,7 +225,7 @@ class SpecStrategy(Strategy):  # type: ignore[misc]
             stop_order = self.order_factory.stop_market(
                 self.instrument.id, exit_side, qty, Price(stop, self.price_decimals), reduce_only=True
             )
-            self.stop_id, self.stop_level = stop_order.client_order_id, stop
+            self.stop_id = stop_order.client_order_id
             self.submit_order(stop_order)
             if target is not None:
                 tp = self.order_factory.limit(
@@ -248,7 +254,7 @@ class SpecStrategy(Strategy):  # type: ignore[misc]
                 self.exit_reason = "target"
             self._open["exit_fee"] = self._open.get("exit_fee", 0.0) + event.commission.as_double()
             self._open["exit_ns"] = event.ts_event
-            self._open["exit_price"] = event.last_px.as_double()
+            self._open["exit_price"] = self._px(event.last_px)
 
     def on_position_closed(self, event: Any) -> None:
         self.trade.side = "flat"
