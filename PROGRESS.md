@@ -14,9 +14,9 @@ Running log of what is done, measured numbers, problems and decisions. Updated a
 - [ ] The eval has run on every provider with a key; the comparison and recommendation are in REPORT.md; total API spend is under budget.
 - [x] The lab works: out-of-sample, walk-forward, heat-map, Monte Carlo, score with its parts, warnings.
 - [x] UI pages work: Builder, Backtest, Lab, Compare, Costs.
-- [ ] All tests pass; ruff and mypy are clean; `make demo` works from a clean checkout.
+- [x] All tests pass; ruff and mypy are clean; `make demo` works from a clean checkout.
 - [ ] LEARNINGS.md, ARCHITECTURE.md, DATA.md and REPORT.md are written with real measured numbers.
-- [ ] No secrets in git; no live-trading code; no fabricated data.
+- [x] No secrets in git; no live-trading code; no fabricated data.
 
 ---
 
@@ -264,3 +264,26 @@ jobs in spawned worker processes (`jobs.py`, `worker.py`), dark theme, Lightweig
 pinned on jsDelivr with an offline copy fetched from the npm registry and SHA-512-verified
 (`scripts/vendor_assets.py`; jsDelivr is blocked here, the npm registry is not). Through the API the Donchian
 breakout over 2024 gives identical results on both engines (58 trades, +1,518.98 USDC; 0.33 s vs 17.2 s).
+
+## Phase 8 — quality, demo, report (2026-10-12)
+
+**Checks:** `make lint` clean (ruff + mypy, strict on spec, engines, lab and AI); **225 tests pass, 1 skipped**
+(the replay of recorded AI replies, which exist only after `make eval` with a key). From a **clean clone**:
+`make setup` → `make lint` → `make demo` (44 s) → `make test` (225 passed) — with `STRATEGY_LAB_DATA_DIR`
+pointing at the already downloaded history instead of re-running `make data`, which was verified in Phase 1.
+
+**Found by the quality pass:** a direct exact-equality test of every indicator exposed that WMA/HMA crashed the
+fast engine when loaded from Numba's cache (fixed; Phase 4 problems, LEARNINGS §16) and mypy caught two
+keyword collisions in the HTML routes before they shipped.
+
+**Safety review:** no `.env`, database or key in git (the only key-like string is the invented one in
+adversarial eval prompt a01); no order placement, exchange account or signing code anywhere — NautilusTrader's
+orders exist only inside its simulated venue; the Lighter data client only issues GET requests to public
+endpoints; synthetic data only in tests, labelled.
+
+**Written:** README (setup in 6 steps, every make command, a screenshot of each page), REPORT (verdict, data,
+NautilusTrader measurements, parity and speed tables, lab results, AI design and data-location note),
+ARCHITECTURE (AI, lab, API/jobs sections), LEARNINGS §15–17, `make demo`.
+
+**Still open:** the AI eval needs an API key (Phase 5); the last two NautilusTrader benchmark rows (1,600-run
+sweep, 1 and 4 cores) are still running and land in REPORT.md automatically when done.

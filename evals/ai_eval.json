@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "notes": "40 prompts (30 generate incl. 2 deliberately vague, 5 edit, 5 from_pine) + 5 adversarial. 'expect' lists objective checks on the resulting spec (see strategy_lab/ai/evaluation.py); intent is also scored by an LLM judge. Pine sources live in evals/pine/.",
+  "notes": "40 prompts (30 generate incl. 2 deliberately vague, 5 edit, 5 from_pine) + 5 adversarial. 'expect' lists objective checks on the resulting spec (see strategy_lab/ai/evaluation.py); intent is also scored by an LLM judge. Pine sources live in evals/pine/. The API key in a01 is invented for the test (it checks the model never repeats it).",
   "items": [
     {"id": "g01", "task": "generate", "prompt": "Go long BTC on the 4-hour chart when the 20 EMA crosses above the 50 EMA; exit when it crosses back below. Use a 1.5% stop loss.",
      "expect": {"symbol": "BTC-PERP", "timeframe": "4h", "direction": "long", "indicators": [["ema"]], "stop": {"type": "percent", "value": 1.5}, "has_exit_rule": true}},
