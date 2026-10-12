@@ -25,7 +25,7 @@ from strategy_lab.spec.params import tunable_parameters, with_params
 from strategy_lab.spec.schema import StrategySpec
 
 CATALOGUE = sorted((Path(__file__).parent.parent / "strategy_lab" / "spec" / "catalogue").glob("*.json"))
-SPECS = [StrategySpec.model_validate_json(p.read_text()) for p in CATALOGUE]
+SPECS = [StrategySpec.model_validate_json(p.read_text(encoding="utf-8")) for p in CATALOGUE]
 finite = st.floats(min_value=-1e9, max_value=1e9, allow_nan=False, allow_infinity=False)
 
 

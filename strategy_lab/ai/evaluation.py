@@ -66,16 +66,18 @@ class EvalItem(BaseModel):
     expect: dict[str, Any] = {}
 
     def text(self) -> str:
-        return (EVAL_DIR / self.prompt_file).read_text() if self.prompt_file else self.prompt
+        return (EVAL_DIR / self.prompt_file).read_text(encoding="utf-8") if self.prompt_file else self.prompt
 
     def base_spec(self) -> StrategySpec | None:
         if self.base is None:
             return None
-        return StrategySpec.model_validate_json(next(CATALOGUE_DIR.glob(f"{self.base}*.json")).read_text())
+        return StrategySpec.model_validate_json(
+            next(CATALOGUE_DIR.glob(f"{self.base}*.json")).read_text(encoding="utf-8")
+        )
 
 
 def load_items(path: Path = EVAL_DIR / "ai_eval.json") -> list[EvalItem]:
-    return [EvalItem.model_validate(item) for item in json.loads(path.read_text())["items"]]
+    return [EvalItem.model_validate(item) for item in json.loads(path.read_text(encoding="utf-8"))["items"]]
 
 
 # --- objective checks ----------------------------------------------------------------------------------
@@ -386,12 +388,12 @@ def render_summary(summaries: dict[str, dict[str, Any]], meta: dict[str, Any]) -
 
 def write_report(text: str) -> None:
     begin, end = "<!-- AI_EVAL:BEGIN -->", "<!-- AI_EVAL:END -->"
-    report = REPORT.read_text() if REPORT.exists() else "# REPORT\n"
+    report = REPORT.read_text(encoding="utf-8") if REPORT.exists() else "# REPORT\n"
     if begin not in report:
         report += f"\n{begin}\n{end}\n"
     head, rest = report.split(begin, 1)
     _, tail = rest.split(end, 1)
-    REPORT.write_text(f"{head}{begin}\n{text}\n{end}{tail}")
+    REPORT.write_text(f"{head}{begin}\n{text}\n{end}{tail}", encoding="utf-8")
 
 
 def _judge_all(ledger: Ledger, items: list[EvalItem], runs: list[ItemRun], judge_ref: str) -> None:
@@ -551,12 +553,12 @@ def main() -> None:
     out_dir = EVAL_DIR / "results"
     out_dir.mkdir(parents=True, exist_ok=True)
     payload = {"meta": meta, "summaries": summaries, "runs": [asdict(r) | {"rounds": None} for r in runs]}
-    (out_dir / "latest.json").write_text(json.dumps(payload, indent=1, default=str))
+    (out_dir / "latest.json").write_text(json.dumps(payload, indent=1, default=str), encoding="utf-8")
     recorded = EVAL_DIR / "recorded"
     recorded.mkdir(exist_ok=True)
     for provider, provider_runs in by_provider.items():
         replies = {r.item: {"task": r.task, "status": r.status, "rounds": r.rounds} for r in provider_runs}
-        (recorded / f"{provider}.json").write_text(json.dumps(replies, indent=1))
+        (recorded / f"{provider}.json").write_text(json.dumps(replies, indent=1), encoding="utf-8")
     text = render_summary(summaries, meta)
     write_report(text)
     print(text)

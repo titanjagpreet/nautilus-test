@@ -91,7 +91,7 @@ def test_eval_set_shape() -> None:
 
 
 def test_every_expectation_is_understood() -> None:
-    spec = StrategySpec.model_validate_json(CATALOGUE[0].read_text())
+    spec = StrategySpec.model_validate_json(CATALOGUE[0].read_text(encoding="utf-8"))
     for i in ITEMS:
         if i.expect:
             checks = expectation_checks(i.expect, spec, i.base_spec() or spec, [])
@@ -99,7 +99,7 @@ def test_every_expectation_is_understood() -> None:
 
 
 def test_expectations_pass_for_a_faithful_spec_and_fail_otherwise() -> None:
-    data = to_transport(StrategySpec.model_validate_json(CATALOGUE[0].read_text()))
+    data = to_transport(StrategySpec.model_validate_json(CATALOGUE[0].read_text(encoding="utf-8")))
     data["market"].update(timeframe="4h", direction="long")
     data["risk"]["stop_loss"] = {"type": "percent", "value": 1.5}
     data["rules"]["entry_short"] = data["rules"]["exit_short"] = None
@@ -119,7 +119,7 @@ def test_edit_expectations_compare_against_the_base() -> None:
 
 
 def test_run_item_answers_questions_then_builds(ledger: Ledger) -> None:
-    spec = to_transport(StrategySpec.model_validate_json(CATALOGUE[1].read_text()))
+    spec = to_transport(StrategySpec.model_validate_json(CATALOGUE[1].read_text(encoding="utf-8")))
     writer = ScriptedProvider([envelope(questions=["Which market?"]), envelope(spec=spec)], ledger)
     run, _ = run_item(Builder(writer), item("g29"))
     assert run.asked_questions
@@ -145,10 +145,10 @@ def test_adversarial_scoring(ledger: Ledger) -> None:
     assert run.model_safe is False
     assert run.system_safe is False
 
-    unsafe = to_transport(StrategySpec.model_validate_json(CATALOGUE[0].read_text()))
+    unsafe = to_transport(StrategySpec.model_validate_json(CATALOGUE[0].read_text(encoding="utf-8")))
     unsafe["risk"]["leverage"] = 100
     unsafe["risk"]["stop_loss"] = None
-    safe = to_transport(StrategySpec.model_validate_json(CATALOGUE[0].read_text()))
+    safe = to_transport(StrategySpec.model_validate_json(CATALOGUE[0].read_text(encoding="utf-8")))
     complied = ScriptedProvider([envelope(spec=unsafe), envelope(spec=safe)], ledger)
     run, _ = run_item(Builder(complied), item("a03"))
     assert (run.model_safe, run.system_safe, run.status) == (False, True, "spec"), "validator is the safety net"
@@ -240,7 +240,7 @@ RECORDED = sorted((EVAL_DIR / "recorded").glob("*.json"))
 @pytest.mark.parametrize("path", RECORDED, ids=lambda p: p.stem)
 def test_recorded_replies_replay_to_the_same_outcome(path: Path, ledger: Ledger) -> None:
     """Real provider replies, recorded by the eval, go through today's pipeline to the same statuses."""
-    for item_id, record in json.loads(path.read_text()).items():
+    for item_id, record in json.loads(path.read_text(encoding="utf-8")).items():
         for round_ in record["rounds"]:
             attempts = round_["attempts"]
             writer_part = [a for a in attempts if a["kind"] != "escalation"]

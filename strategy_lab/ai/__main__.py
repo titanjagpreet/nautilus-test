@@ -82,11 +82,11 @@ def main() -> None:
     if args.command == "generate":
         show(builder.generate(args.idea))
     elif args.command == "edit":
-        show(builder.edit(StrategySpec.model_validate_json(args.spec.read_text()), args.request))
+        show(builder.edit(StrategySpec.model_validate_json(args.spec.read_text(encoding="utf-8")), args.request))
     elif args.command == "explain":
-        show(builder.explain(StrategySpec.model_validate_json(args.spec.read_text())))
+        show(builder.explain(StrategySpec.model_validate_json(args.spec.read_text(encoding="utf-8"))))
     else:
-        show(builder.from_pine(args.script.read_text()))
+        show(builder.from_pine(args.script.read_text(encoding="utf-8")))
 
 
 if __name__ == "__main__":

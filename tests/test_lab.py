@@ -27,7 +27,7 @@ from strategy_lab.spec.params import tunable_parameters
 from strategy_lab.spec.schema import StrategySpec
 
 CATALOGUE = sorted((Path(__file__).parent.parent / "strategy_lab" / "spec" / "catalogue").glob("*.json"))
-EMA = StrategySpec.model_validate_json(CATALOGUE[0].read_text())
+EMA = StrategySpec.model_validate_json(CATALOGUE[0].read_text(encoding="utf-8"))
 T = pd.Timestamp
 
 
@@ -211,7 +211,9 @@ def test_trade_from_matches_a_full_run_after_a_flat_point() -> None:
     """With enough warm-up, a window run reproduces the full run's trades that start after the window start."""
     if not storage.list_datasets():
         pytest.skip("no data downloaded (run `make data`)")
-    spec = StrategySpec.model_validate_json(CATALOGUE[2].read_text())  # Donchian: exact windowed indicators
+    spec = StrategySpec.model_validate_json(
+        CATALOGUE[2].read_text(encoding="utf-8")
+    )  # Donchian: exact windowed indicators
     start, end = T("2024-01-01", tz="UTC"), T("2024-07-01", tz="UTC")
     market = load_market(spec.market.symbol, start, end, contract_spec(spec.market.symbol).price_decimals)
     full = fast.run_prepared(fast.prepare(spec, market))

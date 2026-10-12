@@ -225,7 +225,7 @@ def _kaggle() -> str:
 def _write_json(name: str, payload: object) -> None:
     path = config.data_dir() / name
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, default=str))
+    path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
 
 
 def validate_all(state: PipelineState) -> list[QualityReport]:
@@ -397,5 +397,5 @@ def run(today: pd.Timestamp | None = None) -> str:
             render_cross_checks(checks, skipped),
         ]
     )
-    (config.reports_dir() / "quality_report.md").write_text(report)
+    (config.reports_dir() / "quality_report.md").write_text(report, encoding="utf-8")
     return report

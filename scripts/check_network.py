@@ -75,7 +75,7 @@ def main() -> None:
     results = run_checks()
     print(render_table(results))
     if args.json:
-        with open(args.json, "w") as fh:
+        with open(args.json, "w", encoding="utf-8") as fh:
             json.dump([asdict(r) for r in results], fh, indent=2)
 
 

@@ -61,7 +61,7 @@ def _fee_lines() -> str:
 
 
 def _example(file: str, idea: str) -> str:
-    spec = StrategySpec.model_validate_json((CATALOGUE_DIR / file).read_text())
+    spec = StrategySpec.model_validate_json((CATALOGUE_DIR / file).read_text(encoding="utf-8"))
     spec = spec.model_copy(update={"meta": spec.meta.model_copy(update={"author": "ai"})})
     reply: dict[str, Any] = {
         "questions": [],

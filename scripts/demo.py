@@ -73,14 +73,14 @@ def main() -> None:
 
     section("2. Validate the catalogue")
     for path in sorted(CATALOGUE.glob("*.json")):
-        checked = services.check(json.loads(path.read_text()))
+        checked = services.check(json.loads(path.read_text(encoding="utf-8")))
         notes = ", ".join(w["code"] for w in checked["warnings"]) or "no warnings"
         print(
             f"  {'ok ' if checked['ok'] else 'ERR'} {path.stem:<32} {len(checked['parameters'])} tunable; {notes}"
         )
 
     section("3. One backtest, both engines (EMA crossover, BTC 2024)")
-    ema = json.loads((CATALOGUE / "01_ema_crossover.json").read_text())
+    ema = json.loads((CATALOGUE / "01_ema_crossover.json").read_text(encoding="utf-8"))
     fast = backtest(store, ema, "2024-01-01", "2025-01-01", "fast")
     nautilus = backtest(store, ema, "2024-01-01", "2025-01-01", "nautilus")
     same = [(t["entry_time"], t["exit_time"]) for t in fast["result"]["trades"]] == [
@@ -93,7 +93,7 @@ def main() -> None:
     )
 
     section("4. Robustness lab (Donchian breakout)")
-    donchian = json.loads((CATALOGUE / "03_donchian_breakout.json").read_text())
+    donchian = json.loads((CATALOGUE / "03_donchian_breakout.json").read_text(encoding="utf-8"))
     start, end = services.default_range("BTC-PERP")
     done = job(store, "lab", {"spec": donchian, "start": start, "end": end, "grid_points": 7})
     report = store.lab_report(done["result_id"])

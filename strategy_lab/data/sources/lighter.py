@@ -72,7 +72,7 @@ def order_book_details() -> list[dict[str, Any]]:
         payload = request_with_retries(http, f"{BASE_URL}/api/v1/orderBookDetails", {"filter": "perp"}).json()
     path = _raw_dir() / "order_book_details.json"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2))
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return list(payload.get("order_book_details", []))
 
 
@@ -161,7 +161,7 @@ def _paged(
             window_start = max(window_end - step_ms, floor_ms)
             page_path = cache / f"{window_start}_{window_end}.json"
             if page_path.exists():
-                page = json.loads(page_path.read_text())
+                page = json.loads(page_path.read_text(encoding="utf-8"))
             else:
                 throttle.wait()
                 params = {
@@ -172,7 +172,7 @@ def _paged(
                     "count_back": 0,
                 }
                 page = request_with_retries(http, f"{BASE_URL}/api/v1/{endpoint}", params).json()
-                page_path.write_text(json.dumps(page))
+                page_path.write_text(json.dumps(page), encoding="utf-8")
             pages.append(page)
             window_end = window_start
     return [p for p in pages if p.get(key)]

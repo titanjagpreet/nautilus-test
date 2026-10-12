@@ -139,20 +139,20 @@ def render(results: dict[str, Any]) -> str:
 
 def write_report(results: dict[str, Any]) -> None:
     begin, end = "<!-- BENCH:BEGIN -->", "<!-- BENCH:END -->"
-    text = REPORT.read_text() if REPORT.exists() else f"# REPORT\n\n{begin}\n{end}\n"
+    text = REPORT.read_text(encoding="utf-8") if REPORT.exists() else f"# REPORT\n\n{begin}\n{end}\n"
     if begin not in text:
         text += f"\n{begin}\n{end}\n"
     head, rest = text.split(begin, 1)
     _, tail = rest.split(end, 1)
-    REPORT.write_text(f"{head}{begin}\n{render(results)}\n{end}{tail}")
+    REPORT.write_text(f"{head}{begin}\n{render(results)}\n{end}{tail}", encoding="utf-8")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--only", help="run only scenarios whose label contains this text")
     args = parser.parse_args()
-    spec = StrategySpec.model_validate_json(SPEC.read_text())
-    results: dict[str, Any] = json.loads(RESULTS.read_text()) if RESULTS.exists() else {}
+    spec = StrategySpec.model_validate_json(SPEC.read_text(encoding="utf-8"))
+    results: dict[str, Any] = json.loads(RESULTS.read_text(encoding="utf-8")) if RESULTS.exists() else {}
     results["_meta"] = {
         "cpus": CORES,
         "ram_gb": round(psutil.virtual_memory().total / 2**30, 1),
@@ -165,7 +165,7 @@ def main() -> None:
         results[label] = measure(fn)
         print(f"  {results[label]}", flush=True)
         RESULTS.parent.mkdir(parents=True, exist_ok=True)
-        RESULTS.write_text(json.dumps(results, indent=2))
+        RESULTS.write_text(json.dumps(results, indent=2), encoding="utf-8")
     write_report(results)
     print(render(results))
 

@@ -25,7 +25,7 @@ from strategy_lab.spec.schema import StrategySpec
 from strategy_lab.ui.markdown import to_html
 
 CATALOGUE = sorted((Path(__file__).parent.parent / "strategy_lab" / "spec" / "catalogue").glob("*.json"))
-EMA = json.loads(CATALOGUE[0].read_text())
+EMA = json.loads(CATALOGUE[0].read_text(encoding="utf-8"))
 needs_data = pytest.mark.skipif(not storage.list_datasets(), reason="no data downloaded (run `make data`)")
 
 

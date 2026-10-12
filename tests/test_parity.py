@@ -27,7 +27,9 @@ _markets: dict[str, MarketData] = {}
 
 
 def catalogue(prefix: str) -> dict[str, Any]:
-    data: dict[str, Any] = json.loads(next(p for p in CATALOGUE if p.stem.startswith(prefix)).read_text())
+    data: dict[str, Any] = json.loads(
+        next(p for p in CATALOGUE if p.stem.startswith(prefix)).read_text(encoding="utf-8")
+    )
     return data
 
 
@@ -55,7 +57,7 @@ def assert_parity(data: dict[str, Any]) -> None:
 @pytest.mark.parametrize("fee_profile", ["lighter_standard", "lighter_premium"])
 @pytest.mark.parametrize("path", CATALOGUE, ids=lambda p: p.stem)
 def test_catalogue_parity(path: Path, fee_profile: str) -> None:
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     data["costs"]["fee_profile"] = fee_profile
     assert_parity(data)
 

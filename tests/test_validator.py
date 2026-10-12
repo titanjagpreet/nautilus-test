@@ -18,7 +18,7 @@ CATALOGUE_FILES = sorted(CATALOGUE_DIR.glob("*.json"))
 
 
 def ema_cross() -> dict[str, Any]:
-    data: dict[str, Any] = json.loads((CATALOGUE_DIR / "01_ema_crossover.json").read_text())
+    data: dict[str, Any] = json.loads((CATALOGUE_DIR / "01_ema_crossover.json").read_text(encoding="utf-8"))
     return data
 
 
@@ -32,7 +32,7 @@ def cmp(left: dict[str, Any], op: str, right: dict[str, Any]) -> dict[str, Any]:
 
 @pytest.mark.parametrize("path", CATALOGUE_FILES, ids=lambda p: p.stem)
 def test_catalogue_specs_validate_and_render(path: Path) -> None:
-    result = validate(json.loads(path.read_text()))
+    result = validate(json.loads(path.read_text(encoding="utf-8")))
     assert result.ok, result.errors
     assert result.spec is not None
     text = render(result.spec)
@@ -44,7 +44,7 @@ def test_catalogue_specs_validate_and_render(path: Path) -> None:
 def test_catalogue_has_ten_strategies_with_descriptions() -> None:
     assert len(CATALOGUE_FILES) == 10
     for path in CATALOGUE_FILES:
-        assert len(json.loads(path.read_text())["meta"]["description"]) > 150
+        assert len(json.loads(path.read_text(encoding="utf-8"))["meta"]["description"]) > 150
 
 
 def test_all_errors_are_reported_at_once_with_json_paths() -> None:
@@ -109,7 +109,7 @@ def test_same_bar_fill_without_current_values_is_still_unsupported() -> None:
 
 
 def test_lookahead_forming_higher_timeframe_bar() -> None:
-    data = json.loads((CATALOGUE_DIR / "05_macd_htf_filter.json").read_text())
+    data = json.loads((CATALOGUE_DIR / "05_macd_htf_filter.json").read_text(encoding="utf-8"))
     data["execution"] = {"htf_bars": "forming"}
     assert "LOOKAHEAD_FORMING_HTF" in codes(data)
 
@@ -118,13 +118,13 @@ def test_lookahead_forming_higher_timeframe_bar() -> None:
 
 
 def test_indicator_timeframe_below_base_is_rejected() -> None:
-    data = json.loads((CATALOGUE_DIR / "05_macd_htf_filter.json").read_text())
+    data = json.loads((CATALOGUE_DIR / "05_macd_htf_filter.json").read_text(encoding="utf-8"))
     data["market"]["timeframe"] = "1d"  # the 4h filter is now *lower* than the base timeframe
     assert "HTF_BELOW_BASE" in codes(data)
 
 
 def test_crosses_on_higher_timeframe_series_are_rejected() -> None:
-    data = json.loads((CATALOGUE_DIR / "05_macd_htf_filter.json").read_text())
+    data = json.loads((CATALOGUE_DIR / "05_macd_htf_filter.json").read_text(encoding="utf-8"))
     data["rules"]["entry_long"]["args"][1] = {
         "op": "crosses_above", "left": {"input": "close"}, "right": {"indicator": "htf_ema"},
     }  # fmt: skip
@@ -197,7 +197,7 @@ def test_slippage_limited_to_what_nautilus_can_model() -> None:
 
 
 def test_volume_and_funding_need_data() -> None:
-    data = json.loads((CATALOGUE_DIR / "10_gold_session_breakout.json").read_text())
+    data = json.loads((CATALOGUE_DIR / "10_gold_session_breakout.json").read_text(encoding="utf-8"))
     data["indicators"].append({"id": "obv", "type": "obv"})
     data["rules"]["entry_long"]["args"].append(cmp({"input": "funding_rate"}, ">", {"value": 0}))
     result = validate(data)
@@ -226,7 +226,7 @@ def test_overfitting_warning_counts_tunable_parameters() -> None:
 
 
 def test_exported_json_schema_is_current() -> None:
-    exported = json.loads((CATALOGUE_DIR.parent / "schema.json").read_text())
+    exported = json.loads((CATALOGUE_DIR.parent / "schema.json").read_text(encoding="utf-8"))
     assert exported == json_schema(), "run `python -m strategy_lab.spec` to regenerate schema.json"
 
 

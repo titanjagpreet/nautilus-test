@@ -34,7 +34,7 @@ class FeeProfile:
 
 @cache
 def fee_profiles() -> dict[str, FeeProfile]:
-    raw = json.loads(FEE_PROFILES_PATH.read_text())
+    raw = json.loads(FEE_PROFILES_PATH.read_text(encoding="utf-8"))
     return {name: FeeProfile(name=name, **values) for name, values in raw.items()}
 
 

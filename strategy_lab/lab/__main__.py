@@ -29,7 +29,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, help="write the full report as JSON")
     args = parser.parse_args()
 
-    spec = StrategySpec.model_validate_json(args.spec.read_text())
+    spec = StrategySpec.model_validate_json(args.spec.read_text(encoding="utf-8"))
     report = run_lab(
         spec,
         pd.Timestamp(args.start, tz="UTC"),
@@ -49,7 +49,7 @@ def main() -> None:
         print(f"  ! {warning.code}: {warning.message}")
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
-        args.out.write_text(json.dumps(report.as_dict(), indent=1))
+        args.out.write_text(json.dumps(report.as_dict(), indent=1), encoding="utf-8")
         print(f"report: {args.out}")
 
 

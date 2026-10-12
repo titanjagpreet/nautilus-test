@@ -84,7 +84,7 @@ def library(store: Store) -> list[dict[str, Any]]:
     """Catalogue templates and saved specs, as select options (``ref`` = "cat:<stem>" or "saved:<id>")."""
     out = []
     for path in sorted(CATALOGUE_DIR.glob("*.json")):
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
         out.append(
             {
                 "ref": f"cat:{path.stem}",
@@ -109,7 +109,11 @@ def load_ref(store: Store, ref: str) -> dict[str, Any] | None:
     kind, _, key = ref.partition(":")
     if kind == "cat":
         path = CATALOGUE_DIR / f"{key}.json"
-        return json.loads(path.read_text()) if path.parent == CATALOGUE_DIR and path.exists() else None
+        return (
+            json.loads(path.read_text(encoding="utf-8"))
+            if path.parent == CATALOGUE_DIR and path.exists()
+            else None
+        )
     if kind == "saved" and key.isdigit():
         return store.spec(int(key))
     return None

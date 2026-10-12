@@ -51,9 +51,13 @@ def test_binance_funding_csv() -> None:
 
 def test_github_funding_exports_both_timestamp_styles(tmp_path: Path) -> None:
     text = tmp_path / "text.csv"
-    text.write_text("symbol,fundingTime,fundingRate,markPrice\nBTCUSDT,2024-01-01 08:00:00.000,0.0001,\n")
+    text.write_text(
+        "symbol,fundingTime,fundingRate,markPrice\nBTCUSDT,2024-01-01 08:00:00.000,0.0001,\n", encoding="utf-8"
+    )
     numeric = tmp_path / "numeric.csv"
-    numeric.write_text(f"symbol,fundingTime,fundingRate,markPrice\nBTCUSDT,{T0_MS + 8 * 3_600_000},0.0001,\n")
+    numeric.write_text(
+        f"symbol,fundingTime,fundingRate,markPrice\nBTCUSDT,{T0_MS + 8 * 3_600_000},0.0001,\n", encoding="utf-8"
+    )
     a, b = gh.parse_funding_export(text), gh.parse_funding_export(numeric)
     assert a["ts"].iloc[0] == b["ts"].iloc[0] == pd.Timestamp("2024-01-01 08:00", tz="UTC")
     (check,) = gh.verify_funding(a, {"numeric": b})

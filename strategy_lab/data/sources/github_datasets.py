@@ -77,12 +77,12 @@ def _manifest_path() -> Path:
 
 def _record_manifest(entries: dict[str, Path]) -> None:
     path = _manifest_path()
-    manifest: dict[str, dict[str, object]] = json.loads(path.read_text()) if path.exists() else {}
+    manifest: dict[str, dict[str, object]] = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     for url, local in entries.items():
         manifest[url] = {"file": str(local.relative_to(config.raw_dir())), "sha256": sha256_file(local),
                          "bytes": local.stat().st_size}
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+    path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
 
 
 @dataclass

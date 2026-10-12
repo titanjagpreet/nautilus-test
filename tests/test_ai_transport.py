@@ -88,7 +88,7 @@ def test_schema_is_valid_strict_and_acyclic(defs_key: str) -> None:
 
 @pytest.mark.parametrize("path", CATALOGUE, ids=lambda p: p.stem)
 def test_catalogue_fits_schema_and_round_trips(path: Path) -> None:
-    spec = StrategySpec.model_validate_json(path.read_text())
+    spec = StrategySpec.model_validate_json(path.read_text(encoding="utf-8"))
     transport = to_transport(spec)
     for defs_key in ("$defs", "$def"):
         jsonschema.validate(envelope(transport), reply_schema(defs_key))
@@ -105,7 +105,7 @@ def nested(depth: int) -> dict[str, Any]:
 
 
 def test_condition_depth_is_bounded() -> None:
-    spec = to_transport(StrategySpec.model_validate_json(CATALOGUE[0].read_text()))
+    spec = to_transport(StrategySpec.model_validate_json(CATALOGUE[0].read_text(encoding="utf-8")))
     schema = reply_schema()
     spec["rules"]["entry_long"] = nested(MAX_DEPTH)
     jsonschema.validate(envelope(spec), schema)

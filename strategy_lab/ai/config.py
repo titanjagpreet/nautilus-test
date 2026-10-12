@@ -106,7 +106,7 @@ CONFIG_PATH = PROJECT_ROOT / "config" / "llm.json"
 
 @cache
 def llm_config() -> LLMConfig:
-    return LLMConfig.model_validate(json.loads(CONFIG_PATH.read_text()))
+    return LLMConfig.model_validate(json.loads(CONFIG_PATH.read_text(encoding="utf-8")))
 
 
 def api_key(provider: str) -> str | None:

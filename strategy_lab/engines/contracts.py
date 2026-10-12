@@ -49,7 +49,7 @@ def contract_spec(symbol: MarketSymbol) -> ContractSpec:
     default = DEFAULT_SPECS[symbol]
     if not path.exists():
         return default
-    details = json.loads(path.read_text()).get("order_book_details", [])
+    details = json.loads(path.read_text(encoding="utf-8")).get("order_book_details", [])
     market = parse_market_spec(details, default.base)
     return ContractSpec(
         symbol,

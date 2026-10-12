@@ -151,7 +151,8 @@ def main() -> None:
                 },
                 indent=2,
                 default=str,
-            )
+            ),
+            encoding="utf-8",
         )
 
 

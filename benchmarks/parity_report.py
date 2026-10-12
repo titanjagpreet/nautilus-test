@@ -71,7 +71,7 @@ def main() -> None:
     rows = []
     for path in sorted((ROOT / "strategy_lab" / "spec" / "catalogue").glob("*.json")):
         for profile in ("lighter_standard", "lighter_premium"):
-            data = json.loads(path.read_text())
+            data = json.loads(path.read_text(encoding="utf-8"))
             data["costs"]["fee_profile"] = profile
             spec = StrategySpec.model_validate(data)
             symbol = spec.market.symbol
@@ -80,14 +80,14 @@ def main() -> None:
             rows.append(compare(spec, markets[symbol]))
             print(rows[-1], flush=True)
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(rows, indent=2))
+    OUT.write_text(json.dumps(rows, indent=2), encoding="utf-8")
     begin, end = "<!-- PARITY:BEGIN -->", "<!-- PARITY:END -->"
-    text = REPORT.read_text() if REPORT.exists() else "# REPORT\n"
+    text = REPORT.read_text(encoding="utf-8") if REPORT.exists() else "# REPORT\n"
     if begin not in text:
         text += f"\n{begin}\n{end}\n"
     head, rest = text.split(begin, 1)
     _, tail = rest.split(end, 1)
-    REPORT.write_text(f"{head}{begin}\n{render(rows)}\n{end}{tail}")
+    REPORT.write_text(f"{head}{begin}\n{render(rows)}\n{end}{tail}", encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ from strategy_lab.spec.schema import json_schema
 
 def main() -> None:
     path = Path(__file__).parent / "schema.json"
-    path.write_text(json.dumps(json_schema(), indent=2) + "\n")
+    path.write_text(json.dumps(json_schema(), indent=2) + "\n", encoding="utf-8")
     print(f"wrote {path}")
 
 

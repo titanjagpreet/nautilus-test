@@ -86,7 +86,7 @@ def main() -> None:
             keep = {k: results[key][k] for k in ("wall_s", "peak_rss_mb", "data_points", "positions", "net_pnl")}
             print(key, keep, flush=True)
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(results, indent=2))
+    OUT.write_text(json.dumps(results, indent=2), encoding="utf-8")
 
 
 if __name__ == "__main__":

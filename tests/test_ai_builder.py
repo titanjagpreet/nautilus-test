@@ -22,7 +22,7 @@ from strategy_lab.ai.transport import to_transport
 from strategy_lab.spec.schema import StrategySpec
 
 CATALOGUE = sorted((Path(__file__).parent.parent / "strategy_lab" / "spec" / "catalogue").glob("*.json"))
-EMA = StrategySpec.model_validate_json(CATALOGUE[0].read_text())
+EMA = StrategySpec.model_validate_json(CATALOGUE[0].read_text(encoding="utf-8"))
 
 
 def reply(**fields: Any) -> str:

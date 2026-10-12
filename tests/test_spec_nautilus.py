@@ -21,7 +21,7 @@ REASONS = {"rule", "stop", "target", "time", "reverse", "end"}
 def test_catalogue_strategy_runs_in_nautilus(path: Path) -> None:
     if not storage.list_datasets():
         pytest.skip("no data downloaded (run `make data`)")
-    spec = StrategySpec.model_validate(json.loads(path.read_text()))
+    spec = StrategySpec.model_validate(json.loads(path.read_text(encoding="utf-8")))
     result = run_spec(spec, pd.Timestamp("2025-02-01", tz="UTC"), pd.Timestamp("2025-03-15", tz="UTC"))
     trades = result.trades
     assert set(trades["exit_reason"]) <= REASONS
