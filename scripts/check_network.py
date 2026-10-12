@@ -16,10 +16,12 @@ import httpx
 HOSTS: dict[str, str] = {
     "data.binance.vision": "Binance public data (BTC spot/futures klines, funding)",
     "mainnet.zklighter.elliot.ai": "Lighter REST API (BTC/XAU perp candles, funding)",
-    "datafeed.dukascopy.com": "Dukascopy tick/candle feed (XAUUSD bid/ask)",
+    "datafeed.dukascopy.com": "Dukascopy tick/candle feed (XAUUSD bid/ask), dukascopy-node <= 1.46",
+    "jetta.dukascopy.com": "Dukascopy candle API used by dukascopy-node >= 1.49",
     "pypi.org": "Python packages",
     "registry.npmjs.org": "npm packages (dukascopy-node, JS assets)",
     "github.com": "Source code, fallback datasets",
+    "raw.githubusercontent.com": "Fallback datasets (pinned raw files)",
     "api.deepseek.com": "DeepSeek LLM API",
     "api.moonshot.ai": "Moonshot / Kimi LLM API",
     "api.anthropic.com": "Anthropic Claude API (optional provider)",

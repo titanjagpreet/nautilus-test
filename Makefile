@@ -3,7 +3,7 @@ SHELL := /bin/bash
 UV ?= uv
 PY := $(UV) run python
 
-.PHONY: help setup network lint test
+.PHONY: help setup network data lint test
 
 help:  ## Show this help
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-10s %s\n", $$1, $$2}'
@@ -15,6 +15,9 @@ setup:  ## Install pinned deps (uv sync), git hooks, .env template
 
 network:  ## Check HTTPS reachability of every data / LLM / CDN host
 	$(PY) scripts/check_network.py
+
+data:  ## Download, validate and resample BTC/XAU history; writes data/quality_report.md
+	$(PY) -m strategy_lab.data
 
 lint:  ## ruff + mypy
 	$(UV) run ruff check .

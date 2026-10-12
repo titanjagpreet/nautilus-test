@@ -43,7 +43,7 @@ dev = [
 ]
 
 [tool.ruff]
-line-length = 100
+line-length = 115
 target-version = "py313"
 extend-exclude = ["data", "strategy_lab/ui/static/vendor"]
 
@@ -55,6 +55,7 @@ ignore = [
     "PLR0911",
     "PLR0912",
     "PLR0915",
+    "PLR0917",  # positional-arg count: same reason as PLR0913
     "RUF001",
     "RUF002",
     "RUF003",
