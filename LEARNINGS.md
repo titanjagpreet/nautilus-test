@@ -244,3 +244,33 @@ market`; `OrderMatchingEngine._update_stop_market_order` checks `is_stop_trigger
 * a trailing stop that should have tightened above a gapped-down open keeps its old level — strategy code must
   read the live trigger price (`order.trigger_price`) rather than remember what it asked for;
 * the fast engine reproduces the rejection (`engines/fast/simulate.py`, step 3c).
+
+## 15. One spec format, three structured-output dialects
+
+The spec's canonical JSON Schema (Pydantic) cannot be handed to the providers' strict modes as-is:
+
+| feature in the canonical schema | Claude `json_schema` | DeepSeek strict tools (beta) | Kimi `json_schema` strict |
+|---|---|---|---|
+| recursive condition trees (`all`/`any`/`not`) | **not supported** | supported (`$ref`) | supported in principle; K2.6 noted unstable with `$ref` |
+| `oneOf` + `discriminator` (Pydantic unions) | use `anyOf` | `anyOf` only | `anyOf` |
+| optional fields (not in `required`) | allowed | **every property required** | every property required |
+| `params` as an open map (`additionalProperties: {number}`) | **must be `false`** | must be `false` | must be `false` |
+| `minimum`/`maximum`, `minLength`, `pattern`, `minItems` | not supported | partly | partly |
+| `$defs` key | `$defs` | documented as `$def` | `$defs` |
+
+So the models write a **transport form** (`strategy_lab/ai/transport.py`), generated from the Pydantic schema:
+condition trees unrolled to 3 levels, params as `[{"name","value"}]` pairs, optional fields required-but-
+nullable, no bounds, `anyOf` instead of `oneOf`. It converts back losslessly (tested on the whole catalogue), and
+everything the transport schema cannot say (bounds, look-ahead, leverage, contradictions) is enforced by
+Pydantic + the validator, whose exact errors drive the repair loop. Two consequences worth knowing:
+
+* **Schema-constrained output does not mean valid output.** A strict schema guarantees shape, not meaning: a
+  model can still emit `leverage: 100`, `stop_loss: null` or an undefined indicator id. The validator is the
+  safety net, and the eval measures the model-level and the system-level safety separately.
+* **One reply envelope for every task** (generate / edit / explain / from_pine) keeps the tools/response-format
+  block byte-identical across requests, so — together with a static system prompt — every provider's prompt
+  cache can hit on the whole ~5K-token prefix; only the user message varies.
+
+Fallback ladder: if an API rejects a structured-output mode with HTTP 400 (e.g. "schema too complex"), the
+provider drops to the next mode (strict tools → JSON mode with the schema and examples in the prompt, which
+DeepSeek requires to contain the word "json") and remembers it.

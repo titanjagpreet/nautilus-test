@@ -58,3 +58,30 @@ build sandbox and also failed DNS from the web-fetch tool, so these facts come f
 - Data: Kimi OpenPlatform privacy policy (2025-04-30) names MOONSHOT AI PTE. LTD. (Singapore), servers in
   Singapore; parent company Moonshot AI is Beijing-based. Consumer kimi.com reportedly stores data in China
   (unverified).
+
+## Anthropic / Claude (optional provider)
+
+Source: the `claude-api` skill's bundled documentation (model table cached 2026-10-06), read before writing the
+provider, and the installed SDK (`anthropic` 1.13.0) source.
+
+- Model `claude-haiku-5-5` (no date suffix): 1M context, 128K output. **Two rate cards by prompt size:**
+  $0.10 / $0.50 per MTok input / output up to 100K prompt tokens, $0.50 / $2.50 above. Cache reads 0.1x input,
+  5-minute cache writes 1.25x, 1-hour writes 2x. Judge candidate `claude-opus-5-5`: $4 / $20, cache reads
+  $0.20 (0.05x), thinking cannot be disabled (effort is the only lever, default `medium`).
+- Structured outputs: `output_config={"format": {"type": "json_schema", "schema": ...}}` on `messages.create`
+  (`output_format` is deprecated). Supported: object/array/string/number/integer/boolean/null, `enum`, `const`,
+  `anyOf`, `allOf`, `$ref`/`$defs`; `additionalProperties: false` required on every object. **Not supported:
+  recursive schemas, numeric bounds, string length bounds, complex array constraints.** Refusals and
+  `max_tokens` stops may not match the schema.
+- Prompt caching: `cache_control: {"type": "ephemeral"}` on a block (max 4 breakpoints); minimum cacheable
+  prefix 512 tokens on Haiku 5.5 (shorter prefixes silently don't cache); usage reports `input_tokens`
+  (uncached), `cache_read_input_tokens`, `cache_creation_input_tokens`, `output_tokens`.
+- Haiku 5.5 thinking: adaptive and **on by default**; `budget_tokens` → 400; `{"type": "disabled"}` only at
+  effort ≤ high; the documented cost lever is `output_config.effort` (default `medium`; we use `low`).
+  Thinking tokens bill as output. Responses can start with (empty) thinking blocks — read blocks by type.
+- Haiku 5.5 rejects non-default `temperature`/`top_p`/`top_k` and assistant prefill (400).
+- `stop_reason == "refusal"` with `stop_details.category`; no server-side fallback for Haiku 5.5.
+- Both `anthropic` 1.13 and `openai` 3.29 are built on `httpx2` (not `httpx`): custom/mock HTTP clients must
+  be `httpx2.Client`s.
+- Reachability from the build sandbox: api.anthropic.com is reachable (401 without a key); api.deepseek.com
+  and api.moonshot.ai are refused by the egress proxy (403 on CONNECT).
