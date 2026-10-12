@@ -2,7 +2,8 @@
 
 Costs are computed from the API's own usage fields (uncached, cached and cache-write prompt tokens, output
 tokens) and the prices in ``config/llm.json`` at the time of the call (DeepSeek: peak or off-peak). Two limits
-apply (``budget_usd``): the whole project's total and the AI eval's share (scope ``"eval"``).
+apply (``budget_usd``): the whole project's total and the AI eval's share (scope ``"eval"``). A structured-output
+mode the API rejects (HTTP 400, unbilled) is logged too, at zero cost, with the API's reason.
 """
 
 from __future__ import annotations
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS llm_calls (
     note TEXT NOT NULL
 )
 """
+MODE_REJECTED = "structured-output mode rejected: "  # note prefix of a logged HTTP 400 fallback
 
 
 class BudgetExceededError(RuntimeError):
@@ -116,6 +118,16 @@ class Ledger:
         with self._connect() as db:
             rows = db.execute("SELECT * FROM llm_calls ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
         return [dict(r) for r in rows]
+
+    def mode_rejections(self) -> list[dict[str, Any]]:
+        """Structured-output modes an API rejected (the provider fell back to its next mode), with the reason."""
+        with self._connect() as db:
+            rows = db.execute(
+                """SELECT provider, model, mode, note AS reason, COUNT(*) AS times, MAX(ts) AS last
+                   FROM llm_calls WHERE note LIKE ? GROUP BY provider, model, mode, note ORDER BY last DESC""",
+                (MODE_REJECTED + "%",),
+            ).fetchall()
+        return [dict(r) | {"reason": r["reason"].removeprefix(MODE_REJECTED)} for r in rows]
 
     def summary(self) -> list[dict[str, Any]]:
         """Spend per scope, provider, model, feature and structured-output mode."""

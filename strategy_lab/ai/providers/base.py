@@ -8,9 +8,9 @@ Each provider lists the structured-output modes it supports, best first (``confi
 * ``json_object`` / ``json_prompt`` — JSON mode (or plain instructions) with the schema and an example in the
   system prompt.
 
-If the API rejects a mode with HTTP 400 (e.g. a schema feature it does not support) the next mode is tried and
-the working mode is remembered. Every call is logged with its token usage and cost; a call is refused up front
-when its worst-case cost could cross a spending limit.
+If the API rejects a mode with HTTP 400 (e.g. a schema feature it does not support) the next mode is tried, the
+working mode is remembered and the rejection is logged with the API's reason. Every call is logged with its
+token usage and cost; a call is refused up front when its worst-case cost could cross a spending limit.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from strategy_lab.ai.config import Mode, ProviderConfig, llm_config
-from strategy_lab.ai.ledger import Ledger, Usage
+from strategy_lab.ai.ledger import MODE_REJECTED, Ledger, Usage
 
 Turn = tuple[Literal["user", "assistant"], str]
 CHARS_PER_TOKEN_LOW = 2.5  # conservative (over-)estimate of tokens from characters for budget checks
@@ -157,6 +157,21 @@ class LLMProvider(ABC):
             except ModeRejectedError as exc:
                 rejected.append(f"{mode}: {exc}")
                 self._modes.pop(0)
+                unbilled = Usage(
+                    provider=self.provider,
+                    model=self.model,
+                    mode=mode,
+                    input_tokens=0,
+                    cached_tokens=0,
+                    cache_write_tokens=0,
+                    output_tokens=0,
+                    cost_usd=0.0,
+                    latency_s=time.perf_counter() - started,
+                    peak=self.config.is_peak(when),
+                )
+                self.ledger.record(
+                    unbilled, scope=self.scope, feature=feature, ok=False, note=f"{MODE_REJECTED}{exc}"
+                )
                 continue
             usage = Usage(
                 provider=self.provider,

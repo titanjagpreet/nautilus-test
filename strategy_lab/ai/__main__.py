@@ -71,9 +71,13 @@ def main() -> None:
 
     if args.command == "spend":
         ledger = Ledger()
-        print(
-            json.dumps({"total": ledger.spent(), "eval": ledger.spent("eval"), "by": ledger.summary()}, indent=2)
-        )
+        spend = {
+            "total": ledger.spent(),
+            "eval": ledger.spent("eval"),
+            "by": ledger.summary(),
+            "mode_rejections": ledger.mode_rejections(),
+        }
+        print(json.dumps(spend, indent=2))
         return
     try:
         builder = Builder.for_provider(args.provider)

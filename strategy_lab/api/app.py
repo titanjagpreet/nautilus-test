@@ -169,6 +169,7 @@ def costs() -> dict[str, Any]:
         "spent": {"total": ledger.spent(), "eval": ledger.spent("eval")},
         "by": ledger.summary(),
         "recent": ledger.calls(50),
+        "mode_rejections": ledger.mode_rejections(),
         "prices_checked": llm_config().prices_checked.isoformat(),
         "providers": services.providers(),
         "fee_profiles": services.fees(),

@@ -335,3 +335,7 @@ What it took for the Numba engine to give *identical* trades (`tests/test_parity
   to fix the scoring and re-score without paying for a new run (`--rescore`).
 * **An LLM judge needs the same context as the writer** and a human spot-check: it agreed with a manual review
   on 9 of 11 cases, once too harsh, once misled by missing context.
+* **Log why a fallback happened, not only that it did.** The ledger's `mode` column showed afterwards that every
+  writer call had silently dropped from DeepSeek's strict tools to JSON mode (the judge's small schema kept
+  strict tools), but the 400's message had been discarded, so the cause — model or schema — could not be
+  told. Rejections are now logged at zero cost with the API's reason.

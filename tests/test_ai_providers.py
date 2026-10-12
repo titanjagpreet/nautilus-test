@@ -182,6 +182,9 @@ def test_deepseek_strict_tools_then_json_mode(ledger: Ledger) -> None:
     assert body["response_format"] == {"type": "json_object"}
     assert "json" in body["messages"][0]["content"]
     assert '"$def"' in body["messages"][0]["content"]
+    (rejection,) = ledger.mode_rejections()
+    assert (rejection["mode"], rejection["reason"]) == ("strict_tools", "unsupported schema")
+    assert [c["cost_usd"] for c in ledger.calls()][1] == 0.0, "a rejected mode is logged but not billed"
 
 
 def test_kimi_json_schema_request_and_cached_tokens(ledger: Ledger) -> None:
