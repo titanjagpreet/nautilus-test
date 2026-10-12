@@ -33,12 +33,12 @@ from pydantic import BaseModel, ConfigDict
 
 from strategy_lab.ai.builder import Builder, BuildResult
 from strategy_lab.ai.config import api_key, llm_config, split_ref
-from strategy_lab.ai.judge import judge, rendering
+from strategy_lab.ai.judge import JUDGE_SYSTEM, judge, rendering
 from strategy_lab.ai.ledger import BudgetExceededError, Ledger
-from strategy_lab.ai.prompts import PROMPT_CANARY
+from strategy_lab.ai.prompts import PROMPT_CANARY, system_prompt
 from strategy_lab.ai.providers import make_provider
 from strategy_lab.ai.providers.base import parse_json_object
-from strategy_lab.ai.transport import from_transport, to_transport
+from strategy_lab.ai.transport import from_transport, reply_schema, to_transport
 from strategy_lab.config import PROJECT_ROOT
 from strategy_lab.spec.schema import StrategySpec
 
@@ -368,7 +368,8 @@ def render_summary(summaries: dict[str, dict[str, Any]], meta: dict[str, Any]) -
     for name, s in summaries.items():
         lines.append(
             f"| {name} | {s['items']} | {_pct(s['first_try_valid'])} | {_pct(s['valid_after_repair'])} | "
-            f"{s['repairs']} / {s['escalations']} | {_pct(s['intent_checks'])} / {_pct(s['intent_judge'])} | "
+            f"{s['repairs']} / {s['escalations']} | {_pct(s['intent_checks'])} / {_pct(s['intent_judge'])} "
+            f"({s['judged']} judged) | "
             f"{_pct(s['adversarial_model'])} / {_pct(s['adversarial_system'])} | "
             f"{s['questions_on_clear_prompts']} | ${s['cost_per_request']:.5f} | "
             f"${s['cost_per_request'] * 1000:.2f} | {s['latency_p50']:.1f} s / {s['latency_p95']:.1f} s |"
@@ -415,12 +416,49 @@ def _canonical(transport: dict[str, Any]) -> Any:
     return from_transport(transport)[0]
 
 
+# Rough per-call token assumptions for the pre-flight projection (deliberately on the high side).
+CHARS_PER_TOKEN = 3.5
+WRITER_OUTPUT_TOKENS = 2_500  # reply JSON plus some adaptive thinking
+CALLS_PER_ITEM = 1.4  # repairs and clarifying-question rounds
+JUDGE_CANDIDATE_TOKENS, JUDGE_OUTPUT_TOKENS = 450, 800
+
+
+def project_cost(providers: list[str], items: list[EvalItem], judge_ref: str | None) -> dict[str, float]:
+    """Expected eval spend per provider and for the judge, from the prompt sizes and the configured prices."""
+    config = llm_config()
+    now = dt.datetime.now(dt.UTC)
+    system = len(system_prompt()) + len(json.dumps(reply_schema()))
+    prefix = system / CHARS_PER_TOKEN
+    user = statistics.fmean(len(i.text()) + (2_500 if i.task == "edit" else 0) for i in items) / CHARS_PER_TOKEN
+    calls = len(items) * CALLS_PER_ITEM
+    out: dict[str, float] = {}
+    for name in providers:
+        provider = config.providers[name]
+        r = provider.rates(provider.writer, now, int(prefix + user))
+        first = prefix * (r.cache_write if r.cache_write is not None else r.input)
+        out[name] = (
+            first + calls * (prefix * r.cached_input + user * r.input + WRITER_OUTPUT_TOKENS * r.output)
+        ) / 1e6
+    if judge_ref:
+        provider_name, model = split_ref(judge_ref)
+        provider = config.providers[provider_name]
+        prompt = (len(JUDGE_SYSTEM) / CHARS_PER_TOKEN) + 200 + JUDGE_CANDIDATE_TOKENS * len(providers)
+        r = provider.rates(model, now, int(prompt))
+        judged = sum(1 for i in items if i.adversarial is None)
+        out["judge"] = judged * (prompt * r.input + JUDGE_OUTPUT_TOKENS * r.output) / 1e6
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--providers", help="comma-separated providers (default: every provider with a key)")
     parser.add_argument("--items", help="comma-separated item ids (default: all)")
     parser.add_argument("--no-judge", action="store_true", help="skip the LLM judge")
     parser.add_argument("--wait-off-peak", action="store_true", help="wait for DeepSeek's off-peak prices")
+    parser.add_argument("--judge", help="judge as provider:model (default: first of judge_preference with a key)")
+    parser.add_argument(
+        "--allow-partial", action="store_true", help="start even if the projected spend exceeds the eval budget"
+    )
     args = parser.parse_args()
 
     config = llm_config()
@@ -448,7 +486,25 @@ def main() -> None:
                 f"Note: DeepSeek peak prices apply until {resume:%H:%M} UTC (2x off-peak); --wait-off-peak waits."
             )
 
+    judge_ref = None
+    if not args.no_judge:
+        options = [args.judge] if args.judge else list(config.judge_preference)
+        judge_ref = next((ref for ref in options if api_key(split_ref(ref)[0])), None)
     ledger = Ledger()
+    projection = project_cost(providers, items, judge_ref)
+    remaining = config.budget_usd.eval - ledger.spent("eval")
+    parts = ", ".join(f"{k} ${v:.3f}" for k, v in projection.items())
+    print(
+        f"Projected spend (rough, on the high side): ${sum(projection.values()):.3f} ({parts}); "
+        f"eval budget left ${remaining:.3f}; judge: {judge_ref or 'none'}"
+    )
+    if sum(projection.values()) > remaining and not args.allow_partial:
+        print(
+            "STOPPED before any call: the projection exceeds the eval budget. Use fewer --providers / --items, "
+            "a cheaper --judge, --no-judge, or --allow-partial (the run then stops at the limit)."
+        )
+        return
+
     started = dt.datetime.now(dt.UTC)
     runs: list[ItemRun] = []
     stopped = ""
@@ -465,12 +521,10 @@ def main() -> None:
                     skipped.append(f"{provider} (API unreachable from here: {run.errors[0]})")
                     runs.pop()
                     break
-        judge_ref = next((ref for ref in config.judge_preference if api_key(split_ref(ref)[0])), None)
-        if judge_ref and not args.no_judge and runs:
+        if judge_ref and runs:
             _judge_all(ledger, items, runs, judge_ref)
     except BudgetExceededError as exc:
         stopped = str(exc)
-        judge_ref = None
         print(f"STOPPED: {exc}")
 
     finished = dt.datetime.now(dt.UTC)
@@ -485,7 +539,8 @@ def main() -> None:
     meta = {
         "started": started.isoformat(timespec="seconds"),
         "finished": finished.isoformat(timespec="seconds"),
-        "judge": judge_ref if not args.no_judge else None,
+        "judge": judge_ref,
+        "projection": projection,
         "eval_spend": ledger.spent("eval"),
         "total_spend": ledger.spent(),
         "skipped": ", ".join(skipped),
