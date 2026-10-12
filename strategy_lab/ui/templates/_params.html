@@ -1,0 +1,10 @@
+<fieldset id="params" class="params">
+  <legend>Parameters to tune (1–2 for the heat-map; up to 4 for Optuna)</legend>
+  {% for name in parameters %}
+  <label class="check"><input type="checkbox" name="parameters" value="{{ name }}" {{ 'checked' if loop.index <= 2 }}> <code>{{ name }}</code></label>
+  {% else %}<p class="muted">this spec has no tunable parameters</p>{% endfor %}
+</fieldset>
+{% if oob %}
+<input type="date" id="start" name="start" value="{{ start }}" required hx-swap-oob="true">
+<input type="date" id="end" name="end" value="{{ end }}" required hx-swap-oob="true">
+{% endif %}

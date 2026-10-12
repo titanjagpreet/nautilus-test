@@ -3,14 +3,15 @@ SHELL := /bin/bash
 UV ?= uv
 PY := $(UV) run python
 
-.PHONY: help setup network data lint test bench parity eval
+.PHONY: help setup network data lint test bench parity eval ui
 
 help:  ## Show this help
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-10s %s\n", $$1, $$2}'
 
-setup:  ## Install pinned deps (uv sync), git hooks, .env template
+setup:  ## Install pinned deps (uv sync), git hooks, UI libraries (offline copy), .env template
 	$(UV) sync --frozen
 	$(UV) run pre-commit install
+	$(PY) scripts/vendor_assets.py
 	@test -f .env || cp .env.example .env
 
 network:  ## Check HTTPS reachability of every data / LLM / CDN host
@@ -35,3 +36,6 @@ parity:  ## Fast engine vs Nautilus on the 10 catalogue strategies over 2024 -> 
 
 eval:  ## AI builder eval on every provider with a key in .env (spend-capped at $1) -> REPORT.md
 	$(PY) -m strategy_lab.ai.evaluation
+
+ui:  ## Web UI + API on http://127.0.0.1:8000 (Builder, Backtest, Lab, Compare, Costs)
+	$(UV) run uvicorn strategy_lab.api.app:app --host 127.0.0.1 --port 8000

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid two">
+  <section class="card">
+    <h2>AI strategy builder</h2>
+    {% if not providers|selectattr('available')|list %}
+    <div class="alert warn">No LLM API key found. Add <code>DEEPSEEK_API_KEY</code>, <code>MOONSHOT_API_KEY</code> or <code>ANTHROPIC_API_KEY</code> to <code>.env</code> and restart. Everything else — the spec editor, validator, backtests and the lab — works without one.</div>
+    {% endif %}
+    <label>Writer
+      <select id="provider" name="provider">
+        {% for p in providers %}
+        <option value="{{ p.name }}" {{ 'selected' if p.name == writer }} {{ '' if p.available else 'disabled' }}>
+          {{ p.name }} · {{ p.writer }}{% if not p.available %} (no {{ p.key_env }}){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="tabs" data-tabs>
+      <button class="tab active" data-tab="t-generate">Describe</button>
+      <button class="tab" data-tab="t-edit">Edit</button>
+      <button class="tab" data-tab="t-explain">Explain</button>
+      <button class="tab" data-tab="t-pine">From Pine Script</button>
+    </div>
+    <form id="t-generate" class="tab-body" hx-post="/ui/ai/generate" hx-target="#ai-result" hx-include="#provider" hx-indicator="#ai-busy">
+      <textarea name="idea" rows="6" placeholder="e.g. Go long BTC on the 4-hour chart when the 20 EMA crosses above the 50 EMA; exit on the opposite cross; 1.5% stop." required></textarea>
+      <button class="primary">Generate spec</button>
+    </form>
+    <form id="t-edit" class="tab-body hidden" hx-post="/ui/ai/edit" hx-target="#ai-result" hx-include="#provider,#spec-editor" hx-indicator="#ai-busy">
+      <textarea name="change" rows="4" placeholder="e.g. Use 2x leverage and add a 2% trailing stop" required></textarea>
+      <button class="primary">Apply change to the spec on the right</button>
+    </form>
+    <form id="t-explain" class="tab-body hidden" hx-post="/ui/ai/explain" hx-target="#ai-result" hx-include="#provider,#spec-editor" hx-indicator="#ai-busy">
+      <p class="muted">Explains the spec on the right in plain English (risk, costs, weaknesses).</p>
+      <button class="primary">Explain</button>
+    </form>
+    <form id="t-pine" class="tab-body hidden" hx-post="/ui/ai/from_pine" hx-target="#ai-result" hx-include="#provider" hx-indicator="#ai-busy">
+      <textarea name="code" rows="10" class="mono" placeholder="//@version=5&#10;strategy(&quot;My strategy&quot;) ..." required></textarea>
+      <button class="primary">Translate</button>
+    </form>
+    <div id="ai-busy" class="busy">calling the model… (validated, repaired if needed)</div>
+    <div id="ai-result"></div>
+  </section>
+
+  <section class="card">
+    <h2>Spec</h2>
+    <div class="row">
+      <select name="ref" hx-post="/ui/spec/load" hx-trigger="change" hx-target="#check">
+        <option value="" disabled selected>load a template or a saved spec…</option>
+        {% for s in library %}<option value="{{ s.ref }}">{{ s.group }} · {{ s.name }} ({{ s.market }})</option>{% endfor %}
+      </select>
+    </div>
+    <textarea id="spec-editor" name="spec" class="mono editor" spellcheck="false">{{ spec_text }}</textarea>
+    <div class="row">
+      <button hx-post="/ui/spec/check" hx-include="#spec-editor" hx-target="#check">Validate</button>
+      <button hx-post="/ui/spec/save" hx-include="#spec-editor" hx-target="#check">Save</button>
+    </div>
+    <div id="check" hx-post="/ui/spec/check" hx-include="#spec-editor" hx-trigger="load"></div>
+  </section>
+</div>
+{% endblock %}

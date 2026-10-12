@@ -1,0 +1,19 @@
+{% if editor %}<textarea id="spec-editor" name="spec" class="mono editor" spellcheck="false" hx-swap-oob="true">{{ editor }}</textarea>{% endif %}
+{% if check.ok %}
+<div class="alert ok">Valid spec{% if check.warnings %} — {{ check.warnings|length }} warning(s){% endif %}.</div>
+{% else %}
+<div class="alert error"><strong>{{ check.errors|length }} error(s)</strong>
+  <ul>{% for e in check.errors %}<li><code>{{ e.path }}</code> {{ e.message }} <span class="code">{{ e.code }}</span></li>{% endfor %}</ul>
+</div>
+{% endif %}
+{% if check.warnings %}
+<div class="alert warn"><ul>{% for w in check.warnings %}<li><code>{{ w.path }}</code> {{ w.message }} <span class="code">{{ w.code }}</span></li>{% endfor %}</ul></div>
+{% endif %}
+{% if check.rendered %}<div class="rendered">{{ check.rendered|markdown|safe }}</div>{% endif %}
+{% if check.parameters %}
+<details><summary>{{ check.parameters|length }} tunable parameters</summary>
+  <table class="compact"><tr><th>name</th><th>value</th><th>range</th></tr>
+  {% for p in check.parameters %}<tr><td><code>{{ p.name }}</code></td><td>{{ p.value|param }}</td><td>{% if p.low > -1e11 %}{{ p.low|num(2) }} – {{ p.high|num(2) }}{% else %}any{% endif %}</td></tr>{% endfor %}
+  </table>
+</details>
+{% endif %}

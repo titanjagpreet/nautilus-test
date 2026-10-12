@@ -39,5 +39,5 @@ def reports_dir() -> Path:
 
 
 def state_db_path() -> Path:
-    """SQLite file for results, jobs and LLM cost logs."""
-    return data_dir() / "strategy_lab.sqlite"
+    """SQLite file for results, jobs and LLM cost logs (``STRATEGY_LAB_DB`` overrides it, e.g. in tests)."""
+    return Path(os.environ.get("STRATEGY_LAB_DB", data_dir() / "strategy_lab.sqlite"))

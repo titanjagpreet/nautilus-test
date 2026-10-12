@@ -1,0 +1,29 @@
+{% if editor %}<textarea id="spec-editor" name="spec" class="mono editor" spellcheck="false" hx-swap-oob="true">{{ editor }}</textarea>{% endif %}
+<div class="ai-result">
+  <div class="row between">
+    <span class="pill {{ 'ok' if r.status in ('spec', 'explanation') else 'warn' if r.status in ('questions', 'refused') else 'bad' }}">{{ r.status }}</span>
+    <span class="muted small">{{ r.attempts|length }} call(s) · ${{ '%.5f'|format(r.cost_usd) }} · {{ '%.1f'|format(r.latency_s) }} s</span>
+  </div>
+  {% if r.refusal %}<div class="alert warn">{{ r.refusal }}</div>{% endif %}
+  {% if r.questions %}
+  <form hx-post="/ui/ai/generate" hx-target="#ai-result" hx-include="#provider,#t-generate textarea[name=idea]" hx-indicator="#ai-busy">
+    <p>The model needs to know:</p>
+    <ol>{% for q in r.questions %}<li>{{ q }}</li>{% endfor %}</ol>
+    <textarea name="answers" rows="3" placeholder="Your answers" required>{% for q in r.questions %}{{ q }} → 
+{% endfor %}</textarea>
+    <button class="primary">Answer and build</button>
+  </form>
+  {% endif %}
+  {% if r.explanation %}<div class="explanation">{{ r.explanation }}</div>{% endif %}
+  {% if r.spec %}<p class="muted">The spec is in the editor on the right (validated{% if r.attempts|length > 1 %} after {{ r.attempts|length - 1 }} repair/escalation round(s){% endif %}).</p>{% endif %}
+  {% if r.diff %}<h4>Changes</h4><ul class="mono small">{% for d in r.diff %}<li>{{ d }}</li>{% endfor %}</ul>{% endif %}
+  {% if r.assumptions %}<h4>Assumptions</h4><ul>{% for a in r.assumptions %}<li>{{ a }}</li>{% endfor %}</ul>{% endif %}
+  {% if r.unsupported %}<h4>Not translated</h4><ul>{% for u in r.unsupported %}<li>{{ u }}</li>{% endfor %}</ul>{% endif %}
+  {% if r.warnings %}<h4>Warnings</h4><ul>{% for w in r.warnings %}<li>{{ w }}</li>{% endfor %}</ul>{% endif %}
+  {% if r.errors %}<div class="alert error"><strong>Failed after repairs</strong><ul>{% for e in r.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+  <details><summary>calls</summary>
+    <table class="compact"><tr><th>round</th><th>model</th><th>cost</th><th>cached tokens</th><th>time</th><th>problems</th></tr>
+    {% for a in r.attempts %}<tr><td>{{ a.kind }}</td><td>{{ a.model }}</td><td>${{ '%.5f'|format(a.cost_usd) }}</td><td>{{ a.cached_tokens }}</td><td>{{ '%.1f'|format(a.latency_s) }} s</td><td>{{ a.errors|length }}</td></tr>{% endfor %}
+    </table>
+  </details>
+</div>

@@ -1,0 +1,12 @@
+{% if job.status in ('queued', 'running') %}
+<div class="job" hx-get="/ui/jobs/{{ job.id }}" hx-trigger="every 1s" hx-swap="outerHTML">
+  <div class="row between"><span>Job #{{ job.id }} · {{ job.kind }} · {{ job.status }}</span><span class="muted">{{ job.stage }}</span></div>
+  <div class="progress"><div style="width: {{ (job.progress * 100)|round(0) }}%"></div></div>
+</div>
+{% elif job.status == 'done' %}
+<div hx-get="/ui/{{ 'backtests' if job.kind == 'backtest' else 'lab' }}/{{ job.result_id }}" hx-trigger="load" hx-swap="outerHTML">
+  <div class="muted">Job #{{ job.id }} done — loading the result…</div>
+</div>
+{% else %}
+<div class="alert error"><strong>Job #{{ job.id }} failed</strong><div class="mono small">{{ job.error }}</div></div>
+{% endif %}

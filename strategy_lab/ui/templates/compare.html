@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>Compare backtests</h2>
+  <form hx-get="/ui/compare" hx-target="#comparison">
+    <table>
+      <tr><th></th><th>#</th><th>strategy</th><th>market</th><th>period</th><th>engine</th><th>trades</th><th>return</th><th>Sharpe</th><th>max DD</th></tr>
+      {% for b in backtests %}
+      <tr><td><input type="checkbox" name="ids" value="{{ b.id }}" {{ 'checked' if loop.index <= 2 }}></td><td>{{ b.id }}</td><td>{{ b.spec_name }}</td><td>{{ b.market }}</td>
+        <td class="small">{{ b.start_ts[:10] }} → {{ b.end_ts[:10] }}</td><td>{{ b.engine }}</td><td>{{ b.metrics.trades }}</td>
+        <td class="{{ 'pos' if b.metrics.net_return_pct > 0 else 'neg' }}">{{ b.metrics.net_return_pct|num(1) }}%</td><td>{{ b.metrics.sharpe|num }}</td><td>{{ b.metrics.max_drawdown_pct|num(1) }}%</td></tr>
+      {% else %}<tr><td colspan="10" class="muted">run some backtests first</td></tr>{% endfor %}
+    </table>
+    <button class="primary">Compare selected (up to 6)</button>
+  </form>
+</section>
+<div id="comparison">{% if backtests|length >= 2 %}<div hx-get="/ui/compare?ids={{ backtests[0].id }}&ids={{ backtests[1].id }}" hx-trigger="load" hx-swap="outerHTML"></div>{% endif %}</div>
+{% endblock %}

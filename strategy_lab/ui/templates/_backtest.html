@@ -1,0 +1,44 @@
+{% set m = b.metrics %}
+<section class="card">
+  <div class="row between">
+    <h2>#{{ b.id }} {{ b.spec_name }}</h2>
+    <span class="muted small">{{ b.market }} · {{ b.start_ts[:10] }} → {{ b.end_ts[:10] }} · {{ b.engine_version }} · bars {{ b.source }}{% if b.funding_source %} · funding {{ b.funding_source }}{% endif %} · {{ '%.2f'|format(b.wall_s) }} s</span>
+  </div>
+  <div class="metrics">
+    {% for label, value, cls in [
+      ('Net P&L', m.net_pnl|num ~ ' USDC', 'pos' if m.net_pnl > 0 else 'neg'),
+      ('Return', m.net_return_pct|num(1) ~ '%', 'pos' if m.net_return_pct > 0 else 'neg'),
+      ('Buy & hold', m.buy_hold_return_pct|num(1) ~ '%', ''),
+      ('CAGR', m.cagr_pct|num(1) ~ '%', ''),
+      ('Max drawdown', m.max_drawdown_pct|num(1) ~ '% · ' ~ m.max_drawdown_days|num(0) ~ ' d', 'neg'),
+      ('Sharpe / Sortino', m.sharpe|num ~ ' / ' ~ m.sortino|num, ''),
+      ('Calmar', m.calmar|num, ''),
+      ('Trades', m.trades|num, ''),
+      ('Win rate', m.win_rate_pct|num(1) ~ '%', ''),
+      ('Profit factor', m.profit_factor|num, ''),
+      ('Expectancy', m.expectancy|num ~ ' USDC', ''),
+      ('Avg win / loss', m.avg_win|num ~ ' / ' ~ m.avg_loss|num, ''),
+      ('Exposure', m.exposure_pct|num(1) ~ '%', ''),
+      ('Fees', m.fees_paid|num ~ ' USDC', ''),
+      ('Funding paid', m.funding_paid|num ~ ' USDC', ''),
+    ] %}
+    <div class="metric"><div class="label">{{ label }}</div><div class="value {{ cls }}">{{ value }}</div></div>
+    {% endfor %}
+  </div>
+  <h3>Equity vs buy &amp; hold</h3>
+  <div class="chart" id="equity-{{ b.id }}"></div>
+  <h3>Price ({{ b.result.price.timeframe }}) with trades</h3>
+  <div class="chart tall" id="price-{{ b.id }}"></div>
+  <details><summary>{{ b.result.trades|length }} trades</summary>
+    <table class="compact">
+      <tr><th>side</th><th>entry (UTC)</th><th>price</th><th>exit (UTC)</th><th>price</th><th>reason</th><th>qty</th><th>fees</th><th>funding</th><th>net P&amp;L</th></tr>
+      {% for t in b.result.trades[:500] %}
+      <tr><td>{{ t.side }}</td><td data-epoch="{{ t.entry_time }}"></td><td>{{ t.entry_price|num }}</td><td data-epoch="{{ t.exit_time }}"></td><td>{{ t.exit_price|num }}</td><td>{{ t.exit_reason }}</td><td>{{ t.quantity|num(4) }}</td><td>{{ t.fees|num }}</td><td>{{ t.funding|num }}</td><td class="{{ 'pos' if t.pnl_net > 0 else 'neg' }}">{{ t.pnl_net|num }}</td></tr>
+      {% endfor %}
+    </table>
+    {% if b.result.trades|length > 500 %}<p class="muted">first 500 shown; all trades: <code>GET /api/backtests/{{ b.id }}</code></p>{% endif %}
+  </details>
+  <details><summary>spec</summary><pre class="mono small">{{ b.spec|tojson(indent=2) }}</pre></details>
+  <script type="application/json" id="bt-{{ b.id }}">{{ b.result|tojson }}</script>
+  <script>StrategyLab.backtest({{ b.id }});</script>
+</section>

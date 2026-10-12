@@ -1,0 +1,14 @@
+<section class="card">
+  {% if not rows %}<p class="muted">Select at least one backtest.</p>{% else %}
+  <h3>Equity, rebased to 100</h3>
+  <div class="chart" id="compare-chart"></div>
+  <table class="compact">
+    <tr><th>metric</th>{% for b in rows %}<th>#{{ b.id }} {{ b.spec_name }}<div class="small muted">{{ b.engine }} · {{ b.market }} · {{ b.start_ts[:10] }} → {{ b.end_ts[:10] }}</div></th>{% endfor %}</tr>
+    {% for key, label, digits in [('net_pnl', 'net P&L (USDC)', 2), ('net_return_pct', 'return %', 1), ('cagr_pct', 'CAGR %', 1), ('buy_hold_return_pct', 'buy & hold %', 1), ('max_drawdown_pct', 'max drawdown %', 1), ('max_drawdown_days', 'longest drawdown (days)', 0), ('sharpe', 'Sharpe', 2), ('sortino', 'Sortino', 2), ('calmar', 'Calmar', 2), ('trades', 'trades', 0), ('win_rate_pct', 'win rate %', 1), ('profit_factor', 'profit factor', 2), ('expectancy', 'expectancy', 2), ('exposure_pct', 'exposure %', 1), ('fees_paid', 'fees', 2), ('funding_paid', 'funding', 2)] %}
+    <tr><td>{{ label }}</td>{% for b in rows %}<td>{{ b.metrics[key]|num(digits) }}</td>{% endfor %}</tr>
+    {% endfor %}
+  </table>
+  <script type="application/json" id="compare-data">{{ curves|tojson }}</script>
+  <script>StrategyLab.compare();</script>
+  {% endif %}
+</section>

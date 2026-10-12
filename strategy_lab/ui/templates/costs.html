@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid two">
+  <section class="card">
+    <h2>LLM spend</h2>
+    {% for label, spent, limit in [('Whole project', spent_total, budget.total), ('AI eval', spent_eval, budget.eval)] %}
+    <div class="budget"><div class="row between"><span>{{ label }}</span><span>${{ '%.4f'|format(spent) }} of ${{ '%.2f'|format(limit) }}</span></div>
+      <div class="progress"><div style="width: {{ [100, spent / limit * 100]|min|round(1) }}%"></div></div></div>
+    {% endfor %}
+    <p class="small muted">Costs come from each API's usage fields (uncached, cached and cache-write prompt tokens, output tokens) priced with <code>config/llm.json</code> (prices checked {{ prices_checked }}). Every call is checked against both limits before it is sent.</p>
+    <h3>By provider, model and feature</h3>
+    <table class="compact">
+      <tr><th>scope</th><th>model</th><th>feature</th><th>calls</th><th>input</th><th>cached</th><th>output</th><th>cost</th><th>mean latency</th></tr>
+      {% for s in summary %}<tr><td>{{ s.scope }}</td><td>{{ s.provider }}:{{ s.model }}</td><td>{{ s.feature }}</td><td>{{ s.calls }}</td><td>{{ s.input_tokens|num }}</td><td>{{ s.cached_tokens|num }}</td><td>{{ s.output_tokens|num }}</td><td>${{ '%.4f'|format(s.cost_usd) }}</td><td>{{ s.mean_latency_s|num(1) }} s</td></tr>
+      {% else %}<tr><td colspan="9" class="muted">no LLM calls yet</td></tr>{% endfor %}
+    </table>
+  </section>
+  <section class="card">
+    <h2>Providers</h2>
+    <table class="compact">
+      <tr><th>provider</th><th>key</th><th>writer → escalation</th><th>output modes</th><th>data location</th></tr>
+      {% for p in providers %}<tr><td>{{ p.name }}{% if p.default %} <span class="pill">default</span>{% endif %}</td><td>{{ '✓' if p.available else '✗ ' ~ p.key_env }}</td><td>{{ p.writer }}{% if p.escalation %} → {{ p.escalation }}{% endif %}</td><td class="small">{{ p.modes|join(' → ') }}</td><td class="small">{{ p.data_location }}</td></tr>
+      {% if p.peak_now is not none %}<tr><td></td><td colspan="4" class="small muted">{{ 'peak hours now — off-peak (half price) from ' ~ p.next_off_peak ~ ' UTC' if p.peak_now else 'off-peak prices now' }}</td></tr>{% endif %}
+      {% endfor %}
+    </table>
+    <h3>Prices (USD per million tokens)</h3>
+    <table class="compact">
+      <tr><th>model</th><th>input</th><th>cached input</th><th>cache write</th><th>output</th><th>notes</th></tr>
+      {% for p in providers %}{% for m, price in p.models.items() %}
+      <tr><td>{{ p.name }}:{{ m }}</td><td>{{ price.input }}</td><td>{{ price.cached_input }}</td><td>{{ price.cache_write or '—' }}</td><td>{{ price.output }}</td>
+        <td class="small">{% if price.off_peak %}off-peak {{ price.off_peak.input }} / {{ price.off_peak.cached_input }} / {{ price.off_peak.output }}{% endif %}{% if price.long_context %}prompts &gt; {{ price.long_context_tokens|num }} tokens: {{ price.long_context.input }} / {{ price.long_context.output }}{% endif %}</td></tr>
+      {% endfor %}{% endfor %}
+    </table>
+    <h3>Trading costs (fee profiles)</h3>
+    <table class="compact"><tr><th>profile</th><th>maker</th><th>taker</th><th></th></tr>
+      {% for f in fees %}<tr><td>{{ f.name }}</td><td>{{ f.maker_bps }} bps</td><td>{{ f.taker_bps }} bps</td><td class="small">{{ f.note }}</td></tr>{% endfor %}
+    </table>
+  </section>
+</div>
+<section class="card">
+  <h3>Recent calls</h3>
+  <table class="compact">
+    <tr><th>time (UTC)</th><th>scope</th><th>feature</th><th>model</th><th>mode</th><th>input</th><th>cached</th><th>cache write</th><th>output</th><th>cost</th><th>latency</th><th>ok</th></tr>
+    {% for c in recent %}<tr><td class="small">{{ c.ts }}</td><td>{{ c.scope }}</td><td>{{ c.feature }}</td><td>{{ c.provider }}:{{ c.model }}</td><td class="small">{{ c.mode }}</td><td>{{ c.input_tokens|num }}</td><td>{{ c.cached_tokens|num }}</td><td>{{ c.cache_write_tokens|num }}</td><td>{{ c.output_tokens|num }}</td><td>${{ '%.5f'|format(c.cost_usd) }}</td><td>{{ c.latency_s|num(1) }} s</td><td>{{ '✓' if c.ok else '✗ ' ~ c.note }}</td></tr>
+    {% else %}<tr><td colspan="12" class="muted">no calls yet</td></tr>{% endfor %}
+  </table>
+</section>
+{% endblock %}

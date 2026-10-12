@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block head %}<script src="{{ asset('plotly') }}"></script>{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>Robustness lab</h2>
+  <form hx-post="/ui/lab" hx-target="#job">
+    <div class="row wrap">
+      <label>Strategy
+        <select name="ref" hx-get="/ui/spec/params" hx-trigger="change" hx-target="#params" hx-swap="outerHTML">
+          {% for s in library %}<option value="{{ s.ref }}" {{ 'selected' if s.ref == selected }}>{{ s.group }} · {{ s.name }} ({{ s.market }})</option>{% endfor %}
+        </select>
+      </label>
+      <label>From <input type="date" id="start" name="start" value="{{ start }}" required></label>
+      <label>To <input type="date" id="end" name="end" value="{{ end }}" required></label>
+      <label>Objective
+        <select name="objective"><option value="sharpe">Sharpe</option><option value="net_return_pct">net return</option><option value="calmar">Calmar</option><option value="profit_factor">profit factor</option></select>
+      </label>
+      <label>Grid <input type="number" name="grid_points" value="9" min="3" max="15" class="narrow"> per axis</label>
+      <label>Optuna trials <input type="number" name="optuna_trials" value="0" min="0" max="300" class="narrow"></label>
+    </div>
+    {% with oob = false %}{% include "_params.html" %}{% endwith %}
+    <button class="primary">Run the lab</button>
+  </form>
+  <p class="muted small">Out-of-sample (tune on the first 70%, test on the last 30%), walk-forward (6 months in / 2 months out), heat-map with neighbour stability, Monte Carlo (1,000 trade resamples), and a 0–100 robustness score from named parts. Runs on the fast engine (identical trades to NautilusTrader).</p>
+</section>
+<div id="job"></div>
+<div id="result">{% if show_id %}<div hx-get="/ui/lab/{{ show_id }}" hx-trigger="load" hx-swap="outerHTML"></div>{% endif %}</div>
+<section class="card">
+  <h3>Recent lab reports</h3>
+  <table>
+    <tr><th>#</th><th>strategy</th><th>market</th><th>period</th><th>score</th><th></th></tr>
+    {% for r in reports %}
+    <tr><td>{{ r.id }}</td><td>{{ r.spec_name }}</td><td>{{ r.market }}</td><td class="small">{{ r.start_ts[:10] }} → {{ r.end_ts[:10] }}</td><td><strong>{{ r.score|num(0) }}</strong>/100</td>
+      <td><a href="#" hx-get="/ui/lab/{{ r.id }}" hx-target="#result">open</a></td></tr>
+    {% else %}<tr><td colspan="6" class="muted">none yet</td></tr>{% endfor %}
+  </table>
+</section>
+{% endblock %}

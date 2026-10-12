@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} · Strategy Lab</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="{{ asset('htmx') }}"></script>
+  <script src="{{ asset('lightweight-charts') }}"></script>
+  {% block head %}{% endblock %}
+  <script src="/static/app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/">Strategy&nbsp;Lab</a>
+    <nav>
+      {% for href, label in pages %}
+      <a href="{{ href }}" class="{{ 'active' if label == title else '' }}">{{ label }}</a>
+      {% endfor %}
+    </nav>
+    <span class="pill warn" title="Nothing in this app can place an order or connect to an exchange account">backtest only · no live trading</span>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+</body>
+</html>

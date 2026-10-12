@@ -1,0 +1,50 @@
+{% set fm = r.full_metrics %}
+<section class="card">
+  <div class="row between">
+    <h2>#{{ row.id }} {{ r.spec_name }}</h2>
+    <span class="muted small">{{ r.market }} · {{ r.window[0][:10] }} → {{ r.window[1][:10] }} · {{ r.runs }} backtests in {{ r.wall_seconds|num(1) }} s · {{ row.engine_version }} · bars {{ r.source }}</span>
+  </div>
+  <div class="score-row">
+    <div class="score {{ 'good' if r.score >= 60 else 'mid' if r.score >= 35 else 'low' }}"><div class="big">{{ r.score|num(0) }}</div><div class="small">robustness / 100</div></div>
+    <table class="parts">
+      <tr><th>part</th><th>points</th><th></th><th>why</th></tr>
+      {% for p in r.parts %}
+      <tr><td>{{ p.name }}</td><td>{{ p.points|num(1) }} / {{ p.weight|num(0) }}</td>
+        <td><div class="bar"><div style="width: {{ (p.score * 100)|round(0) }}%"></div></div></td><td class="small">{{ p.detail }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% if r.warnings %}<div class="alert warn"><strong>Overfitting and risk warnings</strong><ul>{% for w in r.warnings %}<li><span class="code">{{ w.code }}</span> {{ w.message }}</li>{% endfor %}</ul></div>{% endif %}
+  <div class="metrics">
+    {% for label, value in [('Return', fm.net_return_pct|num(1) ~ '%'), ('Buy & hold', fm.buy_hold_return_pct|num(1) ~ '%'), ('Sharpe', fm.sharpe|num), ('Max DD', fm.max_drawdown_pct|num(1) ~ '%'), ('Trades', fm.trades|num), ('Profit factor', fm.profit_factor|num), ('Fees', fm.fees_paid|num), ('Funding', fm.funding_paid|num)] %}
+    <div class="metric"><div class="label">{{ label }}</div><div class="value">{{ value }}</div></div>
+    {% endfor %}
+  </div>
+  <h3>Equity: whole period, out-of-sample, chained walk-forward, buy &amp; hold</h3>
+  <div class="chart" id="lab-curves-{{ row.id }}"></div>
+  <div class="grid two">
+    <div><h3>Heat-map: {{ r.objective }}{% if r.heatmap %} over {{ r.heatmap.x }}{% if r.heatmap.y %} × {{ r.heatmap.y }}{% endif %}{% endif %}</h3><div class="plot" id="lab-heat-{{ row.id }}"></div>
+      {% if r.heatmap %}<p class="small muted">★ best (stability {{ (r.heatmap.stability * 100)|round(0) }}%) · ○ the spec's own values (better than {{ (r.heatmap.current_rank * 100)|round(0) }}% of the grid). Empty cells: fewer than 10 trades.</p>{% endif %}</div>
+    <div><h3>Monte Carlo: final return of {{ r.monte_carlo.samples }} trade resamples</h3><div class="plot" id="lab-mc-{{ row.id }}"></div>
+      {% if r.monte_carlo.final_return_pct %}<p class="small muted">5th / 50th / 95th percentile: {{ r.monte_carlo.final_return_pct.p5|num(1) }}% / {{ r.monte_carlo.final_return_pct.p50|num(1) }}% / {{ r.monte_carlo.final_return_pct.p95|num(1) }}%; max drawdown 5th / 50th / 95th: {{ r.monte_carlo.max_drawdown_pct.p5|num(1) }}% / {{ r.monte_carlo.max_drawdown_pct.p50|num(1) }}% / {{ r.monte_carlo.max_drawdown_pct.p95|num(1) }}%</p>{% endif %}</div>
+  </div>
+  <h3>Out-of-sample (tuned on {{ r.oos.in_sample[0][:10] }} → {{ r.oos.in_sample[1][:10] }}, tested on {{ r.oos.out_sample[0][:10] }} → {{ r.oos.out_sample[1][:10] }})</h3>
+  <table class="compact">
+    <tr><th></th><th>parameters</th><th>trades</th><th>return</th><th>Sharpe</th><th>max DD</th></tr>
+    {% for label, params, mm in [('in-sample, tuned', r.oos.params, r.oos.is_metrics), ('out-of-sample, tuned', r.oos.params, r.oos.oos_metrics), ('out-of-sample, spec as written', r.oos.original, r.oos.oos_original_metrics)] %}
+    <tr><td>{{ label }}</td><td class="mono small">{% for k, v in params.items() %}{{ k }}={{ v|param }} {% endfor %}</td><td>{{ mm.trades }}</td><td>{{ mm.net_return_pct|num(1) }}%</td><td>{{ mm.sharpe|num }}</td><td>{{ mm.max_drawdown_pct|num(1) }}%</td></tr>
+    {% endfor %}
+  </table>
+  <details open><summary>Walk-forward: {{ r.walk_forward.windows|length }} windows, {{ (r.walk_forward.profitable_share * 100)|round(0) }}% profitable, efficiency {{ r.walk_forward.efficiency|num }}, chained return {{ r.walk_forward.total_return_pct|num(1) }}%</summary>
+    <table class="compact">
+      <tr><th>out-of-sample window</th><th>tuned parameters</th><th>in-sample Sharpe</th><th>OOS trades</th><th>OOS return</th><th>OOS Sharpe</th></tr>
+      {% for w in r.walk_forward.windows %}
+      <tr><td class="small">{{ w.out_sample[0][:10] }} → {{ w.out_sample[1][:10] }}</td><td class="mono small">{% for k, v in w.params.items() %}{{ k }}={{ v|param }} {% endfor %}</td>
+        <td>{{ w.is_metrics.sharpe|num }}</td><td>{{ w.oos_metrics.trades }}</td><td class="{{ 'pos' if w.oos_metrics.net_return_pct > 0 else 'neg' }}">{{ w.oos_metrics.net_return_pct|num(1) }}%</td><td>{{ w.oos_metrics.sharpe|num }}</td></tr>
+      {% endfor %}
+    </table>
+  </details>
+  {% if r.optuna %}<p><strong>Optuna</strong> ({{ r.optuna.trials }} trials over {{ r.optuna.parameters|join(', ') }}): best {{ r.objective }} {{ r.optuna.best_objective|num }} at <span class="mono small">{% for k, v in (r.optuna.best or {}).items() %}{{ k }}={{ v|param }} {% endfor %}</span> — {{ r.optuna.note }}.</p>{% endif %}
+  <script type="application/json" id="lab-{{ row.id }}">{{ r|tojson }}</script>
+  <script>StrategyLab.lab({{ row.id }});</script>
+</section>
