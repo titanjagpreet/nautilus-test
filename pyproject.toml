@@ -1,0 +1,87 @@
+[project]
+name = "strategy-lab"
+version = "0.1.0"
+description = "Strategy Lab Prototype: AI strategy builder + NautilusTrader backtesting on real BTC and XAU history"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "anthropic==1.13.0",
+    "duckdb==1.5.6",
+    "fastapi==0.143.0",
+    "httpx==0.28.1",
+    "jinja2==3.1.6",
+    "nautilus-trader==1.231.0",
+    "numba==0.68.0",
+    "numpy==2.5.4",
+    "openai==3.29.0",
+    "optuna==5.0.0",
+    "pandas==3.0.6",
+    "psutil==7.2.2",
+    "pyarrow==26.0.0",
+    "pydantic==2.14.1",
+    "python-dotenv==1.2.4",
+    "uvicorn==0.54.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "strategy_lab"
+module-root = ""
+
+[dependency-groups]
+dev = [
+    "hypothesis==6.169.0",
+    "mypy==2.4.0",
+    "pandas-stubs==3.0.5.260914",
+    "pre-commit==4.6.2",
+    "pytest==9.1.1",
+    "pytest-xdist==3.8.0",
+    "ruff==0.17.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["data", "strategy_lab/ui/static/vendor"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "N", "PL", "PT", "C4", "PIE", "RET"]
+ignore = [
+    "PLR0913",  # many-argument functions are natural for engine/venue configuration
+    "PLR2004",  # magic values are fine in finance formulas and tests
+    "PLR0911",
+    "PLR0912",
+    "PLR0915",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLR2004", "N802", "N806"]
+
+[tool.mypy]
+python_version = "3.13"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = ["data/", "strategy_lab/ui/static/"]
+
+[[tool.mypy.overrides]]
+module = ["strategy_lab.spec.*", "strategy_lab.engines.*", "strategy_lab.lab.*"]
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "realdata: needs downloaded data under data/ (skipped when absent)",
+    "slow: long-running test",
+]
+filterwarnings = ["ignore::DeprecationWarning:optuna.*"]
