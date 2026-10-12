@@ -119,6 +119,16 @@ class Ledger:
             rows = db.execute("SELECT * FROM llm_calls ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
         return [dict(r) for r in rows]
 
+    def notes(self, limit: int = 20) -> list[dict[str, Any]]:
+        """The latest calls with a note: unusable replies (and why), text ignored after a reply, stop reasons."""
+        with self._connect() as db:
+            rows = db.execute(
+                """SELECT ts, scope, feature, provider, model, mode, ok, note FROM llm_calls
+                   WHERE note != '' AND note NOT LIKE ? ORDER BY id DESC LIMIT ?""",
+                (MODE_REJECTED + "%", limit),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
     def mode_rejections(self) -> list[dict[str, Any]]:
         """Structured-output modes an API rejected (the provider fell back to its next mode), with the reason."""
         with self._connect() as db:

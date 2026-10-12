@@ -36,6 +36,9 @@ class ProviderError(RuntimeError):
     """The call failed for a reason other than the content of the reply (network, auth, bad request)."""
 
 
+IGNORED_AFTER_JSON = "ignored after the JSON object: "  # ledger note when a reply had text or brackets after it
+
+
 class ModeRejectedError(ProviderError):
     """HTTP 400 for a structured-output mode; the next mode may work."""
 
@@ -72,22 +75,37 @@ class RawReply:
     detail: str = ""
 
 
-def parse_json_object(text: str) -> dict[str, Any]:
-    """Parse a JSON object, tolerating a Markdown code fence or text around it."""
+def split_json_object(text: str) -> tuple[dict[str, Any], str]:
+    """The reply's JSON object and whatever follows it.
+
+    Tolerated: a Markdown code fence, text before the object and, after it, text or surplus closing brackets.
+    DeepSeek V4.1-Flash sometimes closes one brace too many at the end of a long reply — a complete object and
+    then a stray ``}``, recorded in JSON mode and in strict tools; reading "from the first ``{`` to the last
+    ``}``" pulls that brace in and fails. A second JSON object is an error: which one is meant is ambiguous.
+    """
     stripped = text.strip()
     fence = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", stripped, flags=re.DOTALL)
     if fence:
         stripped = fence.group(1)
-    try:
-        value = json.loads(stripped)
-    except json.JSONDecodeError:
-        start, end = stripped.find("{"), stripped.rfind("}")
-        if start < 0 or end <= start:
-            raise
-        value = json.loads(stripped[start : end + 1])
-    if not isinstance(value, dict):
-        raise json.JSONDecodeError("the reply is JSON but not an object", stripped, 0)
-    return value
+    start = stripped.find("{")
+    if start < 0:
+        raise json.JSONDecodeError("no JSON object in the reply", stripped, 0)
+    value: dict[str, Any]
+    value, end = json.JSONDecoder().raw_decode(stripped, start)
+    rest = stripped[end:].strip()
+    if "{" in rest:
+        raise json.JSONDecodeError("a second JSON object follows the first", stripped, stripped.index("{", end))
+    return value, rest
+
+
+def parse_json_object(text: str) -> dict[str, Any]:
+    return split_json_object(text)[0]
+
+
+def _invalid_json(exc: json.JSONDecodeError) -> str:
+    """The parser's message with the text around the failing position, for the user and the repair prompt."""
+    before, after = exc.doc[max(0, exc.pos - 60) : exc.pos], exc.doc[exc.pos : exc.pos + 40]
+    return f"the reply is not a valid JSON object: {exc} — near: {before}<<HERE>>{after}"
 
 
 def schema_instructions(schema: dict[str, Any]) -> str:
@@ -190,14 +208,21 @@ class LLMProvider(ABC):
                 latency_s=time.perf_counter() - started,
                 peak=self.config.is_peak(when),
             )
-            self.ledger.record(usage, scope=self.scope, feature=feature, ok=raw.stop == "ok", note=raw.detail)
+            data: dict[str, Any] | None = None
+            note = raw.detail
+            if raw.stop == "ok":
+                try:
+                    data, rest = split_json_object(raw.text)
+                    note = f"{IGNORED_AFTER_JSON}{rest[:200]}" if rest else ""
+                except json.JSONDecodeError as exc:
+                    note = _invalid_json(exc)
+            self.ledger.record(usage, scope=self.scope, feature=feature, ok=data is not None, note=note)
             if raw.stop == "refusal":
                 reason = raw.detail or "no reason given"
                 raise RefusalError(f"the provider declined the request ({reason})", raw.text, usage)
             if raw.stop == "truncated":
                 raise TruncatedError("the reply was cut off at the output-token limit", raw.text, usage)
-            try:
-                return parse_json_object(raw.text), usage
-            except json.JSONDecodeError as exc:
-                raise InvalidJSONError(f"the reply is not a valid JSON object: {exc}", raw.text, usage) from exc
+            if data is None:
+                raise InvalidJSONError(note, raw.text, usage)
+            return data, usage
         raise ProviderError(f"{self.ref}: every structured-output mode was rejected: {'; '.join(rejected)}")

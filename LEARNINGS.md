@@ -342,4 +342,10 @@ What it took for the Numba engine to give *identical* trades (`tests/test_parity
   told. Rejections are now logged at zero cost with the API's reason; the next single call named it: DeepSeek
   requires a `type` on every `anyOf` branch, which the docs do not say. For strict tools each such branch is
   now inlined (`typed_union_branches`, tested to accept exactly the same documents) — a 4× larger schema
-  (52 KB), cached after the first call.
+  (52 KB), cached after the first call — and DeepSeek accepts it.
+* **"Strict" output can still carry a stray character.** DeepSeek V4.1-Flash sometimes closes one brace too many
+  after a complete object — seen in JSON mode and again in strict tools, so the constraint does not cover the end
+  of the arguments. Parse exactly one JSON value (`json.JSONDecoder.raw_decode`) and look at what follows;
+  "first `{` to last `}`" is the wrong heuristic for this slip, since it pulls the stray brace in. Keep the text
+  around a parse error: without it, two different slips (a stray brace, a reply that stops after a comma) both
+  read as "invalid JSON", and one was misdescribed until the recording was re-read.

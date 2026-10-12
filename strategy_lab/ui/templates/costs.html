@@ -41,7 +41,7 @@
   <h3>Recent calls</h3>
   <table class="compact">
     <tr><th>time (UTC)</th><th>scope</th><th>feature</th><th>model</th><th>mode</th><th>input</th><th>cached</th><th>cache write</th><th>output</th><th>cost</th><th>latency</th><th>ok</th></tr>
-    {% for c in recent %}<tr><td class="small">{{ c.ts }}</td><td>{{ c.scope }}</td><td>{{ c.feature }}</td><td>{{ c.provider }}:{{ c.model }}</td><td class="small">{{ c.mode }}</td><td>{{ c.input_tokens|num }}</td><td>{{ c.cached_tokens|num }}</td><td>{{ c.cache_write_tokens|num }}</td><td>{{ c.output_tokens|num }}</td><td>${{ '%.5f'|format(c.cost_usd) }}</td><td>{{ c.latency_s|num(1) }} s</td><td>{{ '✓' if c.ok else '✗ ' ~ c.note }}</td></tr>
+    {% for c in recent %}<tr><td class="small">{{ c.ts }}</td><td>{{ c.scope }}</td><td>{{ c.feature }}</td><td>{{ c.provider }}:{{ c.model }}</td><td class="small">{{ c.mode }}</td><td>{{ c.input_tokens|num }}</td><td>{{ c.cached_tokens|num }}</td><td>{{ c.cache_write_tokens|num }}</td><td>{{ c.output_tokens|num }}</td><td>${{ '%.5f'|format(c.cost_usd) }}</td><td>{{ c.latency_s|num(1) }} s</td><td>{{ '✓' if c.ok else '✗' }}{% if c.note %} <span class="small">{{ c.note }}</span>{% endif %}</td></tr>
     {% else %}<tr><td colspan="12" class="muted">no calls yet</td></tr>{% endfor %}
   </table>
 </section>

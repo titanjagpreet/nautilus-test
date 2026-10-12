@@ -176,22 +176,29 @@ Re-scored from the recorded replies on 2026-10-12T15:00:36+00:00 UTC: model-leve
   |---|---|---|
   | g03 Donchian short | `close < donchian.lower` on the same bar can never be true (CONTRADICTORY_RULE) | compare with the previous bar's band |
   | g11 VWAP "1% above" | tried to nest arithmetic inside an operand (schema error, twice) | plain `close > vwap` — the 1% threshold was dropped |
-  | g21 midnight entry | invalid JSON (text after the object), then an `==` operator the format lacks | an hour window |
-  | p04 Pine pyramiding | invalid JSON (missing comma) | valid spec |
+  | g21 midnight entry | a complete reply followed by one stray `}` (rejected by the old parser, read now), and an `==` operator the format lacks | an hour window |
+  | p04 Pine pyramiding | the reply stops mid-object, right after a comma (not at the token limit) | valid spec |
   | e02 "make it long only" | returned the spec unchanged — correctly, it already was long-only; the builder rejected no-op edits | a meaningless tag edit (eval and builder bug, both fixed) |
 
 * **Structured output:** the spend ledger of the machine that ran the eval shows that **all 56 writer calls
   (generate, edit, from_pine) ran in JSON mode**: DeepSeek rejected strict function calling for the writer on the
   first call and the provider fell back, as designed, while the judge (`deepseek-v4-pro`, a 356-byte schema without
   `$ref` or `anyOf`) got strict tools on all 40 calls. The 400's message was not logged then; it is now (`python -m
-  strategy_lab.ai spend` → `mode_rejections`), and one more call (2026-10-12, $0.0017) named the cause: **"field
-  `anyOf`: missing field `type`"** — DeepSeek's strict mode needs a `type` on every `anyOf` branch, so the writer
-  schema's 57 bare-`$ref` branches failed (not in DeepSeek's docs). So the 88% first-try validity is JSON mode's
-  number — its invalid JSON and schema violations are what schema-enforced decoding removes — and the validator +
-  repair loop, not the API, made the output reliable. Strict tools now get a schema with every such branch inlined
-  (`transport.typed_union_branches`, tested to accept exactly the same documents; 52 KB instead of 13 KB, cached
-  after the first call). **Not yet measured:** whether DeepSeek accepts it and how much first-try validity
-  improves; a rejection would again be logged and fall back to JSON mode.
+  strategy_lab.ai spend` → `mode_rejections`), and one more call named the cause: **"field `anyOf`: missing field
+  `type`"** — DeepSeek's strict mode needs a `type` on every `anyOf` branch, so the writer schema's 57 bare-`$ref`
+  branches failed (not in DeepSeek's docs). So the 88% first-try validity is JSON mode's number, and the validator
+  + repair loop, not the API, made the output reliable. Strict tools now get a schema with every such branch
+  inlined (`transport.typed_union_branches`, tested to accept exactly the same documents; 52 KB instead of 13 KB,
+  cached after the first call), and **DeepSeek accepts it** (2026-10-12).
+* **A model slip that strict mode does not prevent: one `}` too many.** g21's first reply in JSON mode was a
+  complete object followed by one stray `}` (in the recording). The first strict-tools reply failed the same way: a
+  complete 2,259-character object, then more text ending in `}` — by the parser's error, most likely the same
+  single brace (its raw text was not kept; what follows an object is logged now). The old parser read "from the
+  first `{` to the last `}`", which pulls a stray brace in and fails; it now reads exactly one object, accepts
+  closing brackets or text after it (logged in the ledger), and still rejects a second object as ambiguous.
+  Replayed on the recorded run this changes no first-try outcome — g21's first reply also used an `==` operator —
+  but the repair prompt now names the real error instead of a JSON error. **Not yet measured:** first-try validity
+  with strict tools on the whole eval.
 * **Intent:** objective checks 100%, judge 91% (39 judged). A manual check of 11 judge verdicts agreed on 9
   (`evals/judge_check.md`); with the two disagreements corrected the judge score would be ~95%. The objective
   checks are coarse — g11 passed them while missing its key condition — and **the model's own notes can be

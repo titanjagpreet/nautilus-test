@@ -17,7 +17,7 @@ import pytest
 
 from strategy_lab.ai.ledger import Ledger
 from strategy_lab.ai.providers.anthropic_provider import AnthropicProvider
-from strategy_lab.ai.providers.base import RefusalError, TruncatedError
+from strategy_lab.ai.providers.base import InvalidJSONError, RefusalError, TruncatedError, split_json_object
 from strategy_lab.ai.providers.openai_compat import TOOL_NAME, OpenAICompatProvider
 from strategy_lab.ai.transport import reply_schema, typed_union_branches
 
@@ -187,6 +187,50 @@ def test_deepseek_strict_tools_then_json_mode(ledger: Ledger) -> None:
     assert (rejection["mode"], rejection["reason"]) == ("strict_tools", "unsupported schema")
     assert [c["cost_usd"] for c in ledger.calls()][1] == 0.0, "a rejected mode is logged but not billed"
     assert provider.estimate_cost("S", [("user", "U")], schema) < strict_estimate, "estimates the schema sent"
+
+
+@pytest.mark.parametrize(
+    ("text", "value", "rest"),
+    [
+        ('{"a": 1}', {"a": 1}, ""),
+        ('{"a": {"b": [1]}}}', {"a": {"b": [1]}}, "}"),  # the recorded DeepSeek slip: one brace too many
+        ('{"a": [1]} ]}', {"a": [1]}, "]}"),
+        ('```json\n{"a": 1}\n```', {"a": 1}, ""),
+        ('Here it is: {"a": "}"} Done.', {"a": "}"}, "Done."),
+    ],
+)
+def test_split_json_object_reads_exactly_one_object(text: str, value: dict[str, Any], rest: str) -> None:
+    assert split_json_object(text) == (value, rest)
+
+
+@pytest.mark.parametrize(
+    ("text", "error"),
+    [
+        ('{"a": 1}{"a": 2}', "a second JSON object follows the first"),
+        ('{"a": 1, "b": "x",', "Expecting property name"),  # the other recorded slip: stops mid-object
+        ("no JSON here", "no JSON object in the reply"),
+    ],
+)
+def test_split_json_object_rejects_what_it_cannot_read_unambiguously(text: str, error: str) -> None:
+    with pytest.raises(json.JSONDecodeError, match=error):
+        split_json_object(text)
+
+
+def test_stray_brace_is_ignored_and_noted_a_second_object_is_not(ledger: Ledger) -> None:
+    rec = Recorder(
+        chat_completion(None, tool_args=json.dumps(REPLY) + "}"),
+        chat_completion(None, tool_args=json.dumps(REPLY) + json.dumps(REPLY)),
+    )
+    provider = OpenAICompatProvider("deepseek", "deepseek-flash", "k", ledger, http_client=rec.client())
+    data, _ = provider.complete_json("S", "U", reply_schema("$def"))
+    assert data == REPLY
+    with pytest.raises(InvalidJSONError, match="a second JSON object follows the first"):
+        provider.complete_json("S", "U", reply_schema("$def"))
+    second, first = ledger.calls()
+    assert (first["ok"], first["note"]) == (1, "ignored after the JSON object: }")
+    assert second["ok"] == 0
+    assert '<<HERE>>{"questions"' in second["note"], "the error shows where the reply broke"
+    assert [n["note"] for n in ledger.notes()] == [second["note"], first["note"]]
 
 
 def test_kimi_json_schema_request_and_cached_tokens(ledger: Ledger) -> None:

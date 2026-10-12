@@ -76,6 +76,7 @@ def main() -> None:
             "eval": ledger.spent("eval"),
             "by": ledger.summary(),
             "mode_rejections": ledger.mode_rejections(),
+            "notes": ledger.notes(),
         }
         print(json.dumps(spend, indent=2))
         return

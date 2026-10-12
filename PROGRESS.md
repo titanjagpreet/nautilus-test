@@ -252,8 +252,12 @@ Claude were not evaluated (no keys). Details and the default-writer recommendati
 - Every writer call ran in JSON mode: DeepSeek's strict tools were rejected with a 400 whose message was thrown
   away. Rejections are now logged with the reason; one call named it ("field `anyOf`: missing field `type`"), and
   strict tools now get a schema with every `anyOf` branch typed (`transport.typed_union_branches`, proven to
-  accept the same documents). **Open:** confirm DeepSeek accepts it, then re-run the DeepSeek eval to measure
-  first-try validity under strict tools (projected ~$0.14 of the $0.95 eval budget left).
+  accept the same documents); DeepSeek accepts it.
+- The first strict-tools reply (and g21's in JSON mode) was a complete object plus one stray `}`; the parser's
+  "first `{` to last `}`" fallback pulled it in and failed. It now reads exactly one JSON object
+  (`split_json_object`), logs what follows it, rejects a second object, and quotes the text around any parse
+  error. **Open:** re-run the DeepSeek eval to measure first-try validity under strict tools (projected ~$0.14
+  of the $0.95 eval budget left).
 
 ## Phase 6 — the lab (2026-10-12) ✅
 
