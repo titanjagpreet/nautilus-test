@@ -418,9 +418,10 @@ def _canonical(transport: dict[str, Any]) -> Any:
 
 # Rough per-call token assumptions for the pre-flight projection (deliberately on the high side).
 CHARS_PER_TOKEN = 3.5
-WRITER_OUTPUT_TOKENS = 2_500  # reply JSON plus some adaptive thinking
-CALLS_PER_ITEM = 1.4  # repairs and clarifying-question rounds
-JUDGE_CANDIDATE_TOKENS, JUDGE_OUTPUT_TOKENS = 450, 800
+WRITER_OUTPUT_TOKENS = 2_000  # reply JSON (~1.2-1.5K tokens) plus some adaptive thinking
+CALLS_PER_ITEM = 1.3  # repairs and clarifying-question rounds
+JUDGE_CANDIDATE_TOKENS = 450  # one rendered spec
+JUDGE_OUTPUT_TOKENS = 300  # low-effort thinking; plus 150 per candidate's verdict
 
 
 def project_cost(providers: list[str], items: list[EvalItem], judge_ref: str | None) -> dict[str, float]:
@@ -445,7 +446,8 @@ def project_cost(providers: list[str], items: list[EvalItem], judge_ref: str | N
         prompt = (len(JUDGE_SYSTEM) / CHARS_PER_TOKEN) + 200 + JUDGE_CANDIDATE_TOKENS * len(providers)
         r = provider.rates(model, now, int(prompt))
         judged = sum(1 for i in items if i.adversarial is None)
-        out["judge"] = judged * (prompt * r.input + JUDGE_OUTPUT_TOKENS * r.output) / 1e6
+        output = JUDGE_OUTPUT_TOKENS + 150 * len(providers)
+        out["judge"] = judged * (prompt * r.input + output * r.output) / 1e6
     return out
 
 
