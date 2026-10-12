@@ -257,7 +257,11 @@ Claude were not evaluated (no keys). Details and the default-writer recommendati
 - The first strict-tools reply (and g21's in JSON mode) was a complete object plus one stray `}`; the parser's
   "first `{` to last `}`" fallback pulled it in and failed. It now reads exactly one JSON object
   (`split_json_object`), logs what follows it, rejects a second object, and quotes the text around any parse
-  error. Confirmed on the user's machine: the next strict-tools reply was accepted first time, with the ledger
+  error. The strict-tools rewrite then crashed the judge in the next real eval (its schema has no definitions,
+  KeyError) after all 45 writer cases had run — and the results were written only after judging, so they were
+  lost (~$0.03). Fixed: schemas without definitions pass through; writer results are saved before judging; a
+  failed judge call leaves one item unjudged; a test sends every schema in every mode through the real
+  provider code. Confirmed on the user's machine: the next strict-tools reply was accepted first time, with the ledger
   note `ignored after the JSON object: }` (2 of the first 3 strict replies had text after the object). **Open:** re-run the DeepSeek eval to measure first-try validity under strict tools (projected ~$0.14
   of the $0.95 eval budget left).
 

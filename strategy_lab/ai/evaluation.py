@@ -37,7 +37,7 @@ from strategy_lab.ai.judge import JUDGE_SYSTEM, judge, rendering
 from strategy_lab.ai.ledger import BudgetExceededError, Ledger
 from strategy_lab.ai.prompts import PROMPT_CANARY, system_prompt
 from strategy_lab.ai.providers import make_provider
-from strategy_lab.ai.providers.base import parse_json_object
+from strategy_lab.ai.providers.base import ProviderError, ReplyError, parse_json_object
 from strategy_lab.ai.transport import from_transport, reply_schema, to_transport, wire_schema
 from strategy_lab.config import PROJECT_ROOT
 from strategy_lab.spec.schema import StrategySpec
@@ -429,7 +429,8 @@ def judge_request(item: EvalItem) -> str:
 def _judge_all(
     ledger: Ledger, items: list[EvalItem], runs: list[ItemRun], judge_ref: str
 ) -> dict[str, dict[str, Any]]:
-    """Score every non-adversarial item; returns the judge's raw replies by item (for the record)."""
+    """Score every non-adversarial item; returns the judge's raw replies by item (for the record). An item whose
+    judge call fails stays unjudged, with the error recorded."""
     provider = make_provider(judge_ref, ledger, scope="eval")
     record: dict[str, dict[str, Any]] = {}
     for item in items:
@@ -442,7 +443,12 @@ def _judge_all(
             r.provider: rendering(StrategySpec.model_validate(_canonical(r.spec)) if r.spec else None)
             for r in mine
         }
-        result = judge(provider, judge_request(item), candidates, item.base_spec(), seed=item.id)
+        try:
+            result = judge(provider, judge_request(item), candidates, item.base_spec(), seed=item.id)
+        except (ProviderError, ReplyError) as exc:
+            record[item.id] = {"error": str(exc)}
+            print(f"judge {item.id}: not judged ({exc})", flush=True)
+            continue
         record[item.id] = {"labels": result.labels, "reply": result.reply}
         for r in mine:
             if r.provider in result.verdicts:
@@ -624,28 +630,55 @@ def main() -> None:
                     skipped.append(f"{provider} (API unreachable from here: {run.errors[0]})")
                     runs.pop()
                     break
-        if judge_ref and runs:
-            judge_record = _judge_all(ledger, items, runs, judge_ref)
     except BudgetExceededError as exc:
         stopped = str(exc)
         print(f"STOPPED: {exc}")
 
-    finished = dt.datetime.now(dt.UTC)
+    def meta() -> dict[str, Any]:
+        return {
+            "started": started.isoformat(timespec="seconds"),
+            "finished": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
+            "judge": judge_ref,
+            "projection": projection,
+            "eval_spend": ledger.spent("eval"),
+            "total_spend": ledger.spent(),
+            "skipped": ", ".join(skipped),
+            "stopped": stopped,
+        }
+
+    _save(items, runs, meta(), judge_ref, judge_record)  # the writers' replies first: judging must not lose them
+    if judge_ref and runs and not stopped:
+        print(f"judging with {judge_ref} ...", flush=True)
+        try:
+            judge_record = _judge_all(ledger, items, runs, judge_ref)
+        except BudgetExceededError as exc:
+            stopped = f"while judging: {exc}"
+            print(f"STOPPED: {exc}")
+        final = meta()
+        _save(items, runs, final, judge_ref, judge_record)
+    else:
+        final = meta()
+    text = render_summary(_summaries(_by_provider(runs)), final)
+    write_report(text)
+    print(text)
+
+
+def _save(
+    items: list[EvalItem],
+    runs: list[ItemRun],
+    meta: dict[str, Any],
+    judge_ref: str | None,
+    judge_record: dict[str, dict[str, Any]],
+) -> None:
+    """``evals/results/latest.json`` and the recorded replies under ``evals/recorded/``."""
     by_provider = _by_provider(runs)
-    summaries = _summaries(by_provider)
-    meta = {
-        "started": started.isoformat(timespec="seconds"),
-        "finished": finished.isoformat(timespec="seconds"),
-        "judge": judge_ref,
-        "projection": projection,
-        "eval_spend": ledger.spent("eval"),
-        "total_spend": ledger.spent(),
-        "skipped": ", ".join(skipped),
-        "stopped": stopped,
-    }
     out_dir = EVAL_DIR / "results"
     out_dir.mkdir(parents=True, exist_ok=True)
-    payload = {"meta": meta, "summaries": summaries, "runs": [asdict(r) | {"rounds": None} for r in runs]}
+    payload = {
+        "meta": meta,
+        "summaries": _summaries(by_provider),
+        "runs": [asdict(r) | {"rounds": None} for r in runs],
+    }
     (out_dir / "latest.json").write_text(json.dumps(payload, indent=1, default=str), encoding="utf-8")
     recorded = EVAL_DIR / "recorded"
     recorded.mkdir(exist_ok=True)
@@ -660,9 +693,6 @@ def main() -> None:
         (recorded / "judge.json").write_text(
             json.dumps({"judge": judge_ref, "items": judge_record}, indent=1), encoding="utf-8"
         )
-    text = render_summary(summaries, meta)
-    write_report(text)
-    print(text)
 
 
 if __name__ == "__main__":

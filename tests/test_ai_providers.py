@@ -13,13 +13,16 @@ from pathlib import Path
 from typing import Any
 
 import httpx2
+import jsonschema
 import pytest
 
+from strategy_lab.ai.config import llm_config
+from strategy_lab.ai.judge import JUDGE_SCHEMA
 from strategy_lab.ai.ledger import Ledger
 from strategy_lab.ai.providers.anthropic_provider import AnthropicProvider
 from strategy_lab.ai.providers.base import InvalidJSONError, RefusalError, TruncatedError, split_json_object
 from strategy_lab.ai.providers.openai_compat import TOOL_NAME, OpenAICompatProvider
-from strategy_lab.ai.transport import reply_schema, typed_union_branches
+from strategy_lab.ai.transport import reply_schema, typed_union_branches, wire_schema
 
 SCHEMA = reply_schema()
 REPLY = {
@@ -187,6 +190,25 @@ def test_deepseek_strict_tools_then_json_mode(ledger: Ledger) -> None:
     assert (rejection["mode"], rejection["reason"]) == ("strict_tools", "unsupported schema")
     assert [c["cost_usd"] for c in ledger.calls()][1] == 0.0, "a rejected mode is logged but not billed"
     assert provider.estimate_cost("S", [("user", "U")], schema) < strict_estimate, "estimates the schema sent"
+
+
+@pytest.mark.parametrize("provider", ["deepseek", "moonshot", "anthropic"])
+def test_every_schema_goes_out_in_every_mode(provider: str) -> None:
+    """Regression: the judge's schema (no definitions) crashed the strict-tools rewrite in a real eval."""
+    config = llm_config().providers[provider]
+    for schema in (reply_schema(config.defs_key), JUDGE_SCHEMA):
+        for mode in config.modes:
+            jsonschema.Draft202012Validator.check_schema(wire_schema(schema, mode, config.defs_key))
+    assert wire_schema(JUDGE_SCHEMA, "strict_tools", "$def") == JUDGE_SCHEMA
+
+
+def test_deepseek_judge_runs_in_strict_tools(ledger: Ledger) -> None:
+    verdicts = {"verdicts": [{"candidate": "A", "score": 2, "reason": "r"}]}
+    rec = Recorder(chat_completion(None, tool_args=json.dumps(verdicts)))
+    provider = OpenAICompatProvider("deepseek", "deepseek-v4-pro", "k", ledger, http_client=rec.client())
+    data, usage = provider.complete_json("S", "U", JUDGE_SCHEMA, feature="judge")
+    assert (data, usage.mode) == (verdicts, "strict_tools")
+    assert rec.requests[0][1]["tools"][0]["function"]["parameters"] == JUDGE_SCHEMA
 
 
 @pytest.mark.parametrize(

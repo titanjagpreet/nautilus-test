@@ -171,9 +171,10 @@ def typed_union_branches(schema: dict[str, Any], defs_key: str) -> dict[str, Any
     DeepSeek's strict function calling requires a ``type`` on every ``anyOf`` branch ("Invalid tool parameters
     schema : field `anyOf`: missing field `type`", HTTP 400 on the first real run) while it accepts ``$ref``
     elsewhere. A branch that is itself a union is flattened into its parent. The result accepts exactly the same
-    documents; definitions no longer referenced are dropped.
+    documents; definitions no longer referenced are dropped. A schema without definitions (the judge's) has no
+    ``$ref`` to inline and comes back as it is.
     """
-    defs: dict[str, Any] = schema[defs_key]
+    defs: dict[str, Any] = schema.get(defs_key, {})
 
     def branches(option: dict[str, Any]) -> list[Any]:
         body = walk(defs[option["$ref"].rsplit("/", 1)[-1]] if option.keys() == {"$ref"} else option)

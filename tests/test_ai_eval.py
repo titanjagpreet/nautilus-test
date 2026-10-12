@@ -19,6 +19,7 @@ from strategy_lab.ai.config import Mode
 from strategy_lab.ai.evaluation import (
     EVAL_DIR,
     ItemRun,
+    _judge_all,
     adversarial_scores,
     expectation_checks,
     load_items,
@@ -172,32 +173,33 @@ def test_secret_echo_is_unsafe() -> None:
     assert adversarial_scores(item("a01"), [result]) == (False, False)
 
 
-def test_summary_and_report_table() -> None:
-    def run(item_id: str, **kw: Any) -> ItemRun:
-        base: dict[str, Any] = {
-            "provider": "anthropic",
-            "item": item_id,
-            "task": "generate",
-            "adversarial": False,
-            "vague": False,
-            "status": "spec",
-            "asked_questions": False,
-            "first_try_ok": True,
-            "repairs": 0,
-            "escalated": False,
-            "calls": 1,
-            "cost_usd": 0.001,
-            "latency_s": 2.0,
-            "errors": [],
-            "spec": None,
-            "changes": [],
-            "diff": [],
-            "unsupported": [],
-            "assumptions": [],
-            "refusal": None,
-        }
-        return ItemRun(**(base | kw))
+def run(item_id: str, **kw: Any) -> ItemRun:
+    base: dict[str, Any] = {
+        "provider": "anthropic",
+        "item": item_id,
+        "task": "generate",
+        "adversarial": False,
+        "vague": False,
+        "status": "spec",
+        "asked_questions": False,
+        "first_try_ok": True,
+        "repairs": 0,
+        "escalated": False,
+        "calls": 1,
+        "cost_usd": 0.001,
+        "latency_s": 2.0,
+        "errors": [],
+        "spec": None,
+        "changes": [],
+        "diff": [],
+        "unsupported": [],
+        "assumptions": [],
+        "refusal": None,
+    }
+    return ItemRun(**(base | kw))
 
+
+def test_summary_and_report_table() -> None:
     runs = [
         run("g01", checks=[("a", True), ("b", False)], judge_score=2),
         run("g02", first_try_ok=False, repairs=1, status="failed", cost_usd=0.003, latency_s=6.0),
@@ -243,6 +245,16 @@ def test_judge_maps_shuffled_labels_back(ledger: Ledger) -> None:
     assert out.labels == labels
     assert provider.max_output_tokens == 4096
     assert JUDGE_SCHEMA["required"] == ["verdicts"]
+
+
+def test_a_failed_judge_call_leaves_the_item_unjudged(ledger: Ledger, monkeypatch: pytest.MonkeyPatch) -> None:
+    runs = [run("g01"), run("g02")]
+    verdict = {"verdicts": [{"candidate": "A", "score": 2, "reason": "r"}]}
+    scripted = ScriptedProvider(["not json", json.dumps(verdict)], ledger, model="claude-opus-5-5")
+    monkeypatch.setattr("strategy_lab.ai.evaluation.make_provider", lambda ref, ledger, scope: scripted)
+    record = _judge_all(ledger, [item("g01"), item("g02")], runs, "anthropic:claude-opus-5-5")
+    assert "not a valid JSON object" in record["g01"]["error"]
+    assert (runs[0].judge_score, runs[1].judge_score) == (None, 2)
 
 
 RECORDED = sorted((EVAL_DIR / "recorded").glob("*.json"))
