@@ -1,0 +1,107 @@
+{
+  "spec_version": "0.1",
+  "meta": {
+    "name": "Gold session breakout (XAU)",
+    "description": "A London-open breakout on gold, using XAU 15-minute bars. The 32-bar Donchian channel (8 hours) marks the range built during the quiet Asian session. A close that breaks above that range between 07:00 and 10:59 UTC is a long, and a break below it is a short. Trades end after 24 bars (6 hours) if neither the 1.5 ATR stop nor the 2:1 target is hit. It does not use volume, because the gold history here has none.",
+    "author": "template",
+    "tags": [
+      "breakout",
+      "session",
+      "gold"
+    ]
+  },
+  "market": {
+    "symbol": "XAU-PERP",
+    "timeframe": "15m",
+    "direction": "both"
+  },
+  "indicators": [
+    {
+      "id": "asia",
+      "type": "donchian",
+      "params": {
+        "period": 32
+      }
+    }
+  ],
+  "rules": {
+    "entry_long": {
+      "op": "all",
+      "args": [
+        {
+          "op": "crosses_above",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "asia",
+            "output": "upper",
+            "bars_ago": 1
+          }
+        },
+        {
+          "op": "between",
+          "value": {
+            "input": "hour_utc"
+          },
+          "low": {
+            "value": 7
+          },
+          "high": {
+            "value": 10
+          }
+        }
+      ]
+    },
+    "entry_short": {
+      "op": "all",
+      "args": [
+        {
+          "op": "crosses_below",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "asia",
+            "output": "lower",
+            "bars_ago": 1
+          }
+        },
+        {
+          "op": "between",
+          "value": {
+            "input": "hour_utc"
+          },
+          "low": {
+            "value": 7
+          },
+          "high": {
+            "value": 10
+          }
+        }
+      ]
+    }
+  },
+  "risk": {
+    "position_sizing": {
+      "type": "percent_equity",
+      "value": 20
+    },
+    "leverage": 3,
+    "stop_loss": {
+      "type": "atr",
+      "multiple": 1.5,
+      "atr_period": 14
+    },
+    "take_profit": {
+      "type": "risk_reward",
+      "multiple": 2
+    },
+    "time_exit_bars": 24
+  },
+  "costs": {
+    "fee_profile": "lighter_standard",
+    "slippage_ticks": 1,
+    "funding": false
+  }
+}

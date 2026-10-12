@@ -79,6 +79,8 @@ def _read(
     if end is not None:
         df = df[df["ts"] < end]
     df = df.reset_index(drop=True)
+    # Parquet round-trips may come back as datetime64[us]; Nautilus (and our int64 maths) need nanoseconds.
+    df["ts"] = df["ts"].dt.as_unit("ns")
     df["source"] = source
     df["symbol"] = symbol
     return df

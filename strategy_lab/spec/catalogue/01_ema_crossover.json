@@ -1,0 +1,93 @@
+{
+  "spec_version": "0.1",
+  "meta": {
+    "name": "EMA crossover",
+    "description": "Trend following on BTC 1-hour bars. Go long when the 12-bar EMA crosses above the 48-bar EMA and short when it crosses below; the opposite cross closes the trade. A stop 2 ATRs away and a target 3 ATRs away bound every trade. Simple and robust, but it bleeds in sideways markets where the averages cross back and forth.",
+    "author": "template",
+    "tags": [
+      "trend",
+      "moving-average"
+    ]
+  },
+  "market": {
+    "symbol": "BTC-PERP",
+    "timeframe": "1h",
+    "direction": "both"
+  },
+  "indicators": [
+    {
+      "id": "ema_fast",
+      "type": "ema",
+      "params": {
+        "period": 12
+      }
+    },
+    {
+      "id": "ema_slow",
+      "type": "ema",
+      "params": {
+        "period": 48
+      }
+    }
+  ],
+  "rules": {
+    "entry_long": {
+      "op": "crosses_above",
+      "left": {
+        "indicator": "ema_fast"
+      },
+      "right": {
+        "indicator": "ema_slow"
+      }
+    },
+    "exit_long": {
+      "op": "crosses_below",
+      "left": {
+        "indicator": "ema_fast"
+      },
+      "right": {
+        "indicator": "ema_slow"
+      }
+    },
+    "entry_short": {
+      "op": "crosses_below",
+      "left": {
+        "indicator": "ema_fast"
+      },
+      "right": {
+        "indicator": "ema_slow"
+      }
+    },
+    "exit_short": {
+      "op": "crosses_above",
+      "left": {
+        "indicator": "ema_fast"
+      },
+      "right": {
+        "indicator": "ema_slow"
+      }
+    }
+  },
+  "risk": {
+    "position_sizing": {
+      "type": "percent_equity",
+      "value": 20
+    },
+    "leverage": 3,
+    "stop_loss": {
+      "type": "atr",
+      "multiple": 2,
+      "atr_period": 14
+    },
+    "take_profit": {
+      "type": "atr",
+      "multiple": 3,
+      "atr_period": 14
+    }
+  },
+  "costs": {
+    "fee_profile": "lighter_standard",
+    "slippage_ticks": 1,
+    "funding": true
+  }
+}

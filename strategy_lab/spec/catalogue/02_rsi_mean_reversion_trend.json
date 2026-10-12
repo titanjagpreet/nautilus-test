@@ -1,0 +1,86 @@
+{
+  "spec_version": "0.1",
+  "meta": {
+    "name": "RSI mean reversion with trend filter",
+    "description": "Buys short-term dips inside a long-term uptrend on BTC 15-minute bars. When the 200-bar SMA says the trend is up and the 14-bar RSI drops below 30, it buys the oversold dip and sells once RSI recovers above 55. A 1.5 ATR stop limits damage when the dip keeps going, and a 48-bar time exit stops it from holding dead trades.",
+    "author": "template",
+    "tags": [
+      "mean-reversion",
+      "rsi",
+      "trend-filter"
+    ]
+  },
+  "market": {
+    "symbol": "BTC-PERP",
+    "timeframe": "15m",
+    "direction": "long"
+  },
+  "indicators": [
+    {
+      "id": "rsi",
+      "type": "rsi",
+      "params": {
+        "period": 14
+      }
+    },
+    {
+      "id": "sma_trend",
+      "type": "sma",
+      "params": {
+        "period": 200
+      }
+    }
+  ],
+  "rules": {
+    "entry_long": {
+      "op": "all",
+      "args": [
+        {
+          "op": "<",
+          "left": {
+            "indicator": "rsi"
+          },
+          "right": {
+            "value": 30
+          }
+        },
+        {
+          "op": ">",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "sma_trend"
+          }
+        }
+      ]
+    },
+    "exit_long": {
+      "op": ">",
+      "left": {
+        "indicator": "rsi"
+      },
+      "right": {
+        "value": 55
+      }
+    }
+  },
+  "risk": {
+    "position_sizing": {
+      "type": "percent_equity",
+      "value": 20
+    },
+    "leverage": 3,
+    "stop_loss": {
+      "type": "atr",
+      "multiple": 1.5,
+      "atr_period": 14
+    },
+    "time_exit_bars": 48
+  },
+  "costs": {
+    "fee_profile": "lighter_standard",
+    "slippage_ticks": 1,
+    "funding": true
+  }
+}

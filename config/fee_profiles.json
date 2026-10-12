@@ -1,0 +1,12 @@
+{
+  "lighter_standard": {
+    "maker_bps": 0.0,
+    "taker_bps": 0.0,
+    "note": "Lighter standard account: zero maker and taker fees"
+  },
+  "lighter_premium": {
+    "maker_bps": 0.4,
+    "taker_bps": 2.8,
+    "note": "Lighter premium account tier"
+  }
+}

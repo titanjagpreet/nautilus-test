@@ -1,0 +1,102 @@
+{
+  "spec_version": "0.1",
+  "meta": {
+    "name": "Donchian breakout",
+    "description": "A Turtle-style breakout on BTC 4-hour bars. It goes long when the close breaks above the highest high of the previous 20 bars and short when it breaks below the lowest low. It exits a long when price falls back below the 10-bar low (and a short above the 10-bar high), with a 2 ATR initial stop and a 3 ATR trailing stop that only tightens. It catches big trends and gives back a lot in ranges.",
+    "author": "template",
+    "tags": [
+      "breakout",
+      "donchian",
+      "trend"
+    ]
+  },
+  "market": {
+    "symbol": "BTC-PERP",
+    "timeframe": "4h",
+    "direction": "both"
+  },
+  "indicators": [
+    {
+      "id": "dc_entry",
+      "type": "donchian",
+      "params": {
+        "period": 20
+      }
+    },
+    {
+      "id": "dc_exit",
+      "type": "donchian",
+      "params": {
+        "period": 10
+      }
+    }
+  ],
+  "rules": {
+    "entry_long": {
+      "op": "crosses_above",
+      "left": {
+        "input": "close"
+      },
+      "right": {
+        "indicator": "dc_entry",
+        "output": "upper",
+        "bars_ago": 1
+      }
+    },
+    "exit_long": {
+      "op": "<",
+      "left": {
+        "input": "close"
+      },
+      "right": {
+        "indicator": "dc_exit",
+        "output": "lower",
+        "bars_ago": 1
+      }
+    },
+    "entry_short": {
+      "op": "crosses_below",
+      "left": {
+        "input": "close"
+      },
+      "right": {
+        "indicator": "dc_entry",
+        "output": "lower",
+        "bars_ago": 1
+      }
+    },
+    "exit_short": {
+      "op": ">",
+      "left": {
+        "input": "close"
+      },
+      "right": {
+        "indicator": "dc_exit",
+        "output": "upper",
+        "bars_ago": 1
+      }
+    }
+  },
+  "risk": {
+    "position_sizing": {
+      "type": "percent_equity",
+      "value": 20
+    },
+    "leverage": 3,
+    "stop_loss": {
+      "type": "atr",
+      "multiple": 2,
+      "atr_period": 14
+    },
+    "trailing_stop": {
+      "type": "atr",
+      "multiple": 3,
+      "atr_period": 14
+    }
+  },
+  "costs": {
+    "fee_profile": "lighter_standard",
+    "slippage_ticks": 1,
+    "funding": true
+  }
+}

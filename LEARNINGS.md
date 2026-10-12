@@ -144,3 +144,55 @@ Cost: more data points per minute than native bar execution (measured in Phase 2
 
 `MovingAverage.initialized` flips once `count >= period`. The generic strategy never reads an indicator before it is
 initialized, and the fast engine uses exactly the same warm-up lengths.
+
+## 9. Loading bars: wrangler vs catalog
+
+Both paths are implemented in `strategy_lab/engines/nautilus/data_loading.py` and give **identical results**
+(verified on a month of real BTC data: 66 positions, same PnL, fees and funding to the cent; and by
+`test_wrangler_and_catalog_produce_identical_bars`).
+
+| | `BarDataWrangler` (direct) | `ParquetDataCatalog` |
+|---|---|---|
+| What it is | turns a pandas frame indexed by timestamp into `list[Bar]` you pass to `engine.add_data` | Nautilus's own Parquet store; `catalog.write_data(bars)` once, `catalog.bars(bar_types=…, start=…, end=…)` to read |
+| Good for | one-off runs, tests, data you already have in pandas | many runs over the same data, data larger than memory (stream it with `BacktestNode`), sharing data between processes |
+| Cost here | 2.3 s / 582 MB for one month | 3.3 s / 621 MB (writes and reads back) |
+
+Pitfalls hit:
+* **Timestamps must be the bar close.** The wrangler takes the frame's index as `ts_event` *as is*
+  (`prepare_event_and_init_timestamps` → `index.view(np.uint64)`). Our data is open-time stamped, so we shift by
+  one bar width first.
+* **pandas 3 returns `datetime64[us]` from Parquet.** `index.view(np.uint64)` then yields *microseconds* and
+  every bar lands in January 1970. It only worked by accident until we noticed funding (same root cause) was
+  never charged. Fix: normalise every timestamp to nanoseconds at the storage boundary (`dt.as_unit("ns")`).
+* **`ts_init_delta`** delays delivery. With 1m execution bars and 15m strategy bars sharing a timestamp, give the
+  15m bars `ts_init_delta=1` so the venue processes the last 1m bar *before* the strategy decides
+  (`test_finest_bar_type_drives_execution_and_ts_init_delta_orders_strategy_bars`).
+* The wrangler expects exactly the columns `open, high, low, close, volume` (it uses `data.values` positionally).
+
+## 10. Performance: a quadratic slowdown in the portfolio analyzer
+
+Running the hand-written EMA strategy on **1-minute** bars, one month took 9.4 s but two months 22.3 s (2.4×).
+`cProfile` showed pandas, not the matching engine: `PortfolioAnalyzer._append_pnl_record` runs
+`pd.concat([existing, new])` **every time a position closes** (called from `Portfolio.update_position` via
+`record_trade`). That is O(n²) in the number of trades, and pandas 3's Arrow-backed string index makes each concat
+slow. A strategy with ~14,000 trades a year spends most of its time there.
+
+Workaround: `strategy_lab/engines/nautilus/patches.py` buffers the records in lists and builds the same Series
+right before the only method that reads them (`realized_pnls`). `tests/test_nautilus_patches.py` proves every
+Nautilus statistic is identical; two months of 1m trading drop from 21.6 s to 11.0 s. The patch is applied by
+the generic spec runner; the Phase 2 benchmark reports stock and patched timings side by side. (Worth reporting
+upstream: append to a list and concat once.)
+
+## 11. Smaller pitfalls
+
+* `OrderFactory.bracket(...)` creates the take-profit with **`tp_post_only=True`** by default (maker-only).
+* Bar **volume is liquidity**: each bar offers a quarter of its volume per price point; a larger market order is
+  split and the rest fills one tick worse (`test_small_bar_volume_splits_market_orders`). Zero-volume data
+  (our HistData gold) would starve fills, so the spec engine's execution bars carry a large volume (we model no
+  market impact).
+* `account.balance_total()` on a margin account **excludes unrealised PnL** — use it for "cash", not equity.
+* `engine.get_result().elapsed_time` is the **simulated** time span in seconds, not wall time.
+* Nautilus 1.231 calls `pd.Timestamp.utcnow()` internally, which pandas 3 deprecates (harmless warning, filtered
+  in pytest config).
+* A Python subclass of a Cython class (`FillModel`, `SimulationModule`, `Strategy`) can override `cpdef`
+  methods and Nautilus will call the override — that is what makes the fill model and funding module possible.

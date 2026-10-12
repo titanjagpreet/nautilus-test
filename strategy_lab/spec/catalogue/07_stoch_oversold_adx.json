@@ -1,0 +1,117 @@
+{
+  "spec_version": "0.1",
+  "meta": {
+    "name": "Stochastic oversold with ADX filter",
+    "description": "Buys oversold dips only when a real uptrend is in place, on BTC 15-minute bars. The entry needs the stochastic %K to cross above %D while below 25, and the ADX(14) to be above 20 with +DI above -DI, which means trend strength with buyers in control. It exits when %K goes above 80, with a 1.5 ATR stop, a 2:1 target and a 48-bar time limit.",
+    "author": "template",
+    "tags": [
+      "mean-reversion",
+      "stochastic",
+      "adx"
+    ]
+  },
+  "market": {
+    "symbol": "BTC-PERP",
+    "timeframe": "15m",
+    "direction": "long"
+  },
+  "indicators": [
+    {
+      "id": "stoch",
+      "type": "stoch",
+      "params": {
+        "k_period": 14,
+        "d_period": 3,
+        "smooth": 3
+      }
+    },
+    {
+      "id": "adx",
+      "type": "adx",
+      "params": {
+        "period": 14
+      }
+    }
+  ],
+  "rules": {
+    "entry_long": {
+      "op": "all",
+      "args": [
+        {
+          "op": "crosses_above",
+          "left": {
+            "indicator": "stoch",
+            "output": "k"
+          },
+          "right": {
+            "indicator": "stoch",
+            "output": "d"
+          }
+        },
+        {
+          "op": "<",
+          "left": {
+            "indicator": "stoch",
+            "output": "k"
+          },
+          "right": {
+            "value": 25
+          }
+        },
+        {
+          "op": ">",
+          "left": {
+            "indicator": "adx",
+            "output": "adx"
+          },
+          "right": {
+            "value": 20
+          }
+        },
+        {
+          "op": ">",
+          "left": {
+            "indicator": "adx",
+            "output": "plus_di"
+          },
+          "right": {
+            "indicator": "adx",
+            "output": "minus_di"
+          }
+        }
+      ]
+    },
+    "exit_long": {
+      "op": ">",
+      "left": {
+        "indicator": "stoch",
+        "output": "k"
+      },
+      "right": {
+        "value": 80
+      }
+    }
+  },
+  "risk": {
+    "position_sizing": {
+      "type": "percent_equity",
+      "value": 20
+    },
+    "leverage": 3,
+    "stop_loss": {
+      "type": "atr",
+      "multiple": 1.5,
+      "atr_period": 14
+    },
+    "take_profit": {
+      "type": "risk_reward",
+      "multiple": 2
+    },
+    "time_exit_bars": 48
+  },
+  "costs": {
+    "fee_profile": "lighter_standard",
+    "slippage_ticks": 1,
+    "funding": true
+  }
+}

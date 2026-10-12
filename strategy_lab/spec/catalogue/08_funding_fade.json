@@ -1,0 +1,82 @@
+{
+  "spec_version": "0.1",
+  "meta": {
+    "name": "Funding-rate fade",
+    "description": "Bets against an over-crowded long side on BTC 1-hour bars. When the latest funding rate is extreme and positive (at least 0.03% per 8 hours, about three times the usual 0.01%) and the close drops back below the 20-bar EMA, it goes short. The idea is that crowded longs paying high funding tend to unwind. It exits when funding normalises below 0.01%, after 72 bars, at a 3% stop or a 5% target. The short also collects the high funding while it is open.",
+    "author": "template",
+    "tags": [
+      "funding",
+      "contrarian",
+      "perpetuals"
+    ]
+  },
+  "market": {
+    "symbol": "BTC-PERP",
+    "timeframe": "1h",
+    "direction": "short"
+  },
+  "indicators": [
+    {
+      "id": "ema",
+      "type": "ema",
+      "params": {
+        "period": 20
+      }
+    }
+  ],
+  "rules": {
+    "entry_short": {
+      "op": "all",
+      "args": [
+        {
+          "op": ">=",
+          "left": {
+            "input": "funding_rate"
+          },
+          "right": {
+            "value": 0.0003
+          }
+        },
+        {
+          "op": "crosses_below",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "ema"
+          }
+        }
+      ]
+    },
+    "exit_short": {
+      "op": "<",
+      "left": {
+        "input": "funding_rate"
+      },
+      "right": {
+        "value": 0.0001
+      }
+    }
+  },
+  "risk": {
+    "position_sizing": {
+      "type": "percent_equity",
+      "value": 20
+    },
+    "leverage": 3,
+    "stop_loss": {
+      "type": "percent",
+      "value": 3
+    },
+    "take_profit": {
+      "type": "percent",
+      "value": 5
+    },
+    "time_exit_bars": 72
+  },
+  "costs": {
+    "fee_profile": "lighter_standard",
+    "slippage_ticks": 1,
+    "funding": true
+  }
+}

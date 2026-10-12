@@ -1,0 +1,148 @@
+{
+  "spec_version": "0.1",
+  "meta": {
+    "name": "Keltner pullback",
+    "description": "Buys pullbacks in an established trend on BTC 1-hour bars. The trend is up when the 100-bar EMA is higher than it was 10 bars ago. In an uptrend, a bar that dips to the Keltner middle line (an EMA of the typical price) but closes back above it is a buy. Shorts mirror this in a downtrend. The stop sits beyond the lowest low (highest high for shorts) of the last 10 bars, the target is 2\u00d7 that risk, and a close beyond the outer band takes profit early.",
+    "author": "template",
+    "tags": [
+      "pullback",
+      "keltner",
+      "trend"
+    ]
+  },
+  "market": {
+    "symbol": "BTC-PERP",
+    "timeframe": "1h",
+    "direction": "both"
+  },
+  "indicators": [
+    {
+      "id": "kc",
+      "type": "keltner",
+      "params": {
+        "period": 20,
+        "multiplier": 2.0
+      }
+    },
+    {
+      "id": "ema_trend",
+      "type": "ema",
+      "params": {
+        "period": 100
+      }
+    }
+  ],
+  "rules": {
+    "entry_long": {
+      "op": "all",
+      "args": [
+        {
+          "op": ">",
+          "left": {
+            "indicator": "ema_trend"
+          },
+          "right": {
+            "indicator": "ema_trend",
+            "bars_ago": 10
+          }
+        },
+        {
+          "op": "<=",
+          "left": {
+            "input": "low"
+          },
+          "right": {
+            "indicator": "kc",
+            "output": "middle"
+          }
+        },
+        {
+          "op": ">",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "kc",
+            "output": "middle"
+          }
+        }
+      ]
+    },
+    "exit_long": {
+      "op": ">",
+      "left": {
+        "input": "close"
+      },
+      "right": {
+        "indicator": "kc",
+        "output": "upper"
+      }
+    },
+    "entry_short": {
+      "op": "all",
+      "args": [
+        {
+          "op": "<",
+          "left": {
+            "indicator": "ema_trend"
+          },
+          "right": {
+            "indicator": "ema_trend",
+            "bars_ago": 10
+          }
+        },
+        {
+          "op": ">=",
+          "left": {
+            "input": "high"
+          },
+          "right": {
+            "indicator": "kc",
+            "output": "middle"
+          }
+        },
+        {
+          "op": "<",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "kc",
+            "output": "middle"
+          }
+        }
+      ]
+    },
+    "exit_short": {
+      "op": "<",
+      "left": {
+        "input": "close"
+      },
+      "right": {
+        "indicator": "kc",
+        "output": "lower"
+      }
+    }
+  },
+  "risk": {
+    "position_sizing": {
+      "type": "percent_equity",
+      "value": 20
+    },
+    "leverage": 3,
+    "stop_loss": {
+      "type": "structure",
+      "lookback": 10,
+      "buffer_pct": 0.1
+    },
+    "take_profit": {
+      "type": "risk_reward",
+      "multiple": 2
+    }
+  },
+  "costs": {
+    "fee_profile": "lighter_standard",
+    "slippage_ticks": 1,
+    "funding": true
+  }
+}

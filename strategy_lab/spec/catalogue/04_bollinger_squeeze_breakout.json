@@ -1,0 +1,162 @@
+{
+  "spec_version": "0.1",
+  "meta": {
+    "name": "Bollinger squeeze breakout",
+    "description": "Volatility compression followed by expansion on BTC 1-hour bars. A squeeze is when the Bollinger Bands (20, 2) sit inside the Keltner Channel (20, 1.5), which means volatility is unusually low. When the previous bar was in a squeeze and the close breaks out of the bands, it trades in the breakout's direction. It exits when price crosses back over the middle band, with a 1.5 ATR stop and a target of 2\u00d7 the risk.",
+    "author": "template",
+    "tags": [
+      "volatility",
+      "breakout",
+      "bollinger",
+      "keltner"
+    ]
+  },
+  "market": {
+    "symbol": "BTC-PERP",
+    "timeframe": "1h",
+    "direction": "both"
+  },
+  "indicators": [
+    {
+      "id": "bb",
+      "type": "bbands",
+      "params": {
+        "period": 20,
+        "std": 2.0
+      }
+    },
+    {
+      "id": "kc",
+      "type": "keltner",
+      "params": {
+        "period": 20,
+        "multiplier": 1.5
+      }
+    }
+  ],
+  "rules": {
+    "entry_long": {
+      "op": "all",
+      "args": [
+        {
+          "op": "<",
+          "left": {
+            "indicator": "bb",
+            "output": "upper",
+            "bars_ago": 1
+          },
+          "right": {
+            "indicator": "kc",
+            "output": "upper",
+            "bars_ago": 1
+          }
+        },
+        {
+          "op": ">",
+          "left": {
+            "indicator": "bb",
+            "output": "lower",
+            "bars_ago": 1
+          },
+          "right": {
+            "indicator": "kc",
+            "output": "lower",
+            "bars_ago": 1
+          }
+        },
+        {
+          "op": "crosses_above",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "bb",
+            "output": "upper"
+          }
+        }
+      ]
+    },
+    "exit_long": {
+      "op": "<",
+      "left": {
+        "input": "close"
+      },
+      "right": {
+        "indicator": "bb",
+        "output": "middle"
+      }
+    },
+    "entry_short": {
+      "op": "all",
+      "args": [
+        {
+          "op": "<",
+          "left": {
+            "indicator": "bb",
+            "output": "upper",
+            "bars_ago": 1
+          },
+          "right": {
+            "indicator": "kc",
+            "output": "upper",
+            "bars_ago": 1
+          }
+        },
+        {
+          "op": ">",
+          "left": {
+            "indicator": "bb",
+            "output": "lower",
+            "bars_ago": 1
+          },
+          "right": {
+            "indicator": "kc",
+            "output": "lower",
+            "bars_ago": 1
+          }
+        },
+        {
+          "op": "crosses_below",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "bb",
+            "output": "lower"
+          }
+        }
+      ]
+    },
+    "exit_short": {
+      "op": ">",
+      "left": {
+        "input": "close"
+      },
+      "right": {
+        "indicator": "bb",
+        "output": "middle"
+      }
+    }
+  },
+  "risk": {
+    "position_sizing": {
+      "type": "percent_equity",
+      "value": 20
+    },
+    "leverage": 3,
+    "stop_loss": {
+      "type": "atr",
+      "multiple": 1.5,
+      "atr_period": 14
+    },
+    "take_profit": {
+      "type": "risk_reward",
+      "multiple": 2
+    }
+  },
+  "costs": {
+    "fee_profile": "lighter_standard",
+    "slippage_ticks": 1,
+    "funding": true
+  }
+}

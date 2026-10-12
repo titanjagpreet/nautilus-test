@@ -1,0 +1,115 @@
+{
+  "spec_version": "0.1",
+  "meta": {
+    "name": "VWAP reversion",
+    "description": "Intraday mean reversion around the session VWAP on BTC 15-minute bars (the session resets at 00:00 UTC). It buys when price is below VWAP and RSI(14) is under 30, and sells short when price is above VWAP and RSI is over 70. It closes when the close crosses back over VWAP, with a 1.5 ATR stop and a 32-bar (8-hour) time exit. It works in calm, range-bound sessions and is weak on strong trend days.",
+    "author": "template",
+    "tags": [
+      "mean-reversion",
+      "vwap",
+      "intraday"
+    ]
+  },
+  "market": {
+    "symbol": "BTC-PERP",
+    "timeframe": "15m",
+    "direction": "both"
+  },
+  "indicators": [
+    {
+      "id": "vwap",
+      "type": "vwap"
+    },
+    {
+      "id": "rsi",
+      "type": "rsi",
+      "params": {
+        "period": 14
+      }
+    }
+  ],
+  "rules": {
+    "entry_long": {
+      "op": "all",
+      "args": [
+        {
+          "op": "<",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "vwap"
+          }
+        },
+        {
+          "op": "<",
+          "left": {
+            "indicator": "rsi"
+          },
+          "right": {
+            "value": 30
+          }
+        }
+      ]
+    },
+    "exit_long": {
+      "op": "crosses_above",
+      "left": {
+        "input": "close"
+      },
+      "right": {
+        "indicator": "vwap"
+      }
+    },
+    "entry_short": {
+      "op": "all",
+      "args": [
+        {
+          "op": ">",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "vwap"
+          }
+        },
+        {
+          "op": ">",
+          "left": {
+            "indicator": "rsi"
+          },
+          "right": {
+            "value": 70
+          }
+        }
+      ]
+    },
+    "exit_short": {
+      "op": "crosses_below",
+      "left": {
+        "input": "close"
+      },
+      "right": {
+        "indicator": "vwap"
+      }
+    }
+  },
+  "risk": {
+    "position_sizing": {
+      "type": "percent_equity",
+      "value": 20
+    },
+    "leverage": 3,
+    "stop_loss": {
+      "type": "atr",
+      "multiple": 1.5,
+      "atr_period": 14
+    },
+    "time_exit_bars": 32
+  },
+  "costs": {
+    "fee_profile": "lighter_standard",
+    "slippage_ticks": 1,
+    "funding": true
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "spec_version": "0.1",
+  "meta": {
+    "name": "MACD with higher-timeframe EMA filter",
+    "description": "Momentum entries on BTC 15-minute bars that only trade with the bigger trend. The MACD (12, 26, 9) line crossing its signal line triggers an entry, but only longs when the close is above the 50-bar EMA of completed 4-hour bars, and only shorts when it is below. The opposite MACD cross exits, with a 2 ATR stop and a 4 ATR target. The 4-hour filter uses only finished 4-hour bars, so it never peeks at the bar still forming.",
+    "author": "template",
+    "tags": [
+      "momentum",
+      "macd",
+      "multi-timeframe"
+    ]
+  },
+  "market": {
+    "symbol": "BTC-PERP",
+    "timeframe": "15m",
+    "direction": "both"
+  },
+  "indicators": [
+    {
+      "id": "macd",
+      "type": "macd",
+      "params": {
+        "fast": 12,
+        "slow": 26,
+        "signal": 9
+      }
+    },
+    {
+      "id": "htf_ema",
+      "type": "ema",
+      "params": {
+        "period": 50
+      },
+      "timeframe": "4h"
+    }
+  ],
+  "rules": {
+    "entry_long": {
+      "op": "all",
+      "args": [
+        {
+          "op": "crosses_above",
+          "left": {
+            "indicator": "macd",
+            "output": "line"
+          },
+          "right": {
+            "indicator": "macd",
+            "output": "signal"
+          }
+        },
+        {
+          "op": ">",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "htf_ema"
+          }
+        }
+      ]
+    },
+    "exit_long": {
+      "op": "crosses_below",
+      "left": {
+        "indicator": "macd",
+        "output": "line"
+      },
+      "right": {
+        "indicator": "macd",
+        "output": "signal"
+      }
+    },
+    "entry_short": {
+      "op": "all",
+      "args": [
+        {
+          "op": "crosses_below",
+          "left": {
+            "indicator": "macd",
+            "output": "line"
+          },
+          "right": {
+            "indicator": "macd",
+            "output": "signal"
+          }
+        },
+        {
+          "op": "<",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "htf_ema"
+          }
+        }
+      ]
+    },
+    "exit_short": {
+      "op": "crosses_above",
+      "left": {
+        "indicator": "macd",
+        "output": "line"
+      },
+      "right": {
+        "indicator": "macd",
+        "output": "signal"
+      }
+    }
+  },
+  "risk": {
+    "position_sizing": {
+      "type": "percent_equity",
+      "value": 20
+    },
+    "leverage": 3,
+    "stop_loss": {
+      "type": "atr",
+      "multiple": 2,
+      "atr_period": 14
+    },
+    "take_profit": {
+      "type": "atr",
+      "multiple": 4,
+      "atr_period": 14
+    }
+  },
+  "costs": {
+    "fee_profile": "lighter_standard",
+    "slippage_ticks": 1,
+    "funding": true
+  }
+}

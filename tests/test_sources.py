@@ -111,9 +111,17 @@ def test_lighter_candle_and_funding_pages() -> None:
 def test_lighter_market_spec_lookup() -> None:
     details = [
         {"symbol": "ETH", "market_id": 0, "price_decimals": 2, "size_decimals": 4, "min_base_amount": "0.01"},
-        {"symbol": "BTC", "market_id": 1, "price_decimals": 1, "size_decimals": 5, "min_base_amount": "0.0002",
-         "maker_fee": "0", "taker_fee": "0", "created_at": 1735689600},
-    ]  # fmt: skip
+        {
+            "symbol": "BTC",
+            "market_id": 1,
+            "price_decimals": 1,
+            "size_decimals": 5,
+            "min_base_amount": "0.0002",
+            "maker_fee": "0",
+            "taker_fee": "0",
+            "created_at": 1735689600,
+        },
+    ]
     spec = lighter.parse_market_spec(details, "BTC")
     assert (spec.market_id, spec.price_decimals, spec.size_decimals) == (1, 1, 5)
     assert spec.created_at_ms == 1_735_689_600_000

@@ -37,7 +37,7 @@ BASE_URL = "https://data.binance.vision/"
 KLINE_COLUMNS = [
     "open_time", "open", "high", "low", "close", "volume", "close_time",
     "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore",
-]  # fmt: skip
+]
 
 MARKETS = {
     # source name -> (path prefix, first month with data)

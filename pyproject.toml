@@ -85,4 +85,7 @@ markers = [
     "realdata: needs downloaded data under data/ (skipped when absent)",
     "slow: long-running test",
 ]
-filterwarnings = ["ignore::DeprecationWarning:optuna.*"]
+filterwarnings = [
+    "ignore::DeprecationWarning:optuna.*",
+    "ignore:Timestamp.utcnow is deprecated",  # raised inside nautilus_trader 1.231 with pandas 3
+]
