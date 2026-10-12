@@ -34,7 +34,8 @@ def _raw_dir() -> Path:
 
 
 def _run_cli(side: str, start: pd.Timestamp, end: pd.Timestamp, name: str) -> Path:
-    if shutil.which("npx") is None:
+    npx = shutil.which("npx")  # the full path: on Windows npx is npx.cmd, which a bare "npx" does not launch
+    if npx is None:
         raise SourceUnavailableError("npx (Node.js) is not installed")
     out_dir = _raw_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -42,12 +43,14 @@ def _run_cli(side: str, start: pd.Timestamp, end: pd.Timestamp, name: str) -> Pa
     if target.exists() and target.stat().st_size > 0:
         return target
     cmd = [
-        "npx", "--yes", PACKAGE,
+        npx, "--yes", PACKAGE,
         "-i", "xauusd", "-from", f"{start:%Y-%m-%d}", "-to", f"{end:%Y-%m-%d}",
         "-t", "m1", "-p", side, "-f", "csv", "-v", "-vu", "units",
         "-dir", str(out_dir), "-fn", name, "-r", "3", "-bs", "10", "-bp", "1000",
     ]
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=3600, check=False)
+    proc = subprocess.run(
+        cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3600, check=False
+    )
     if proc.returncode != 0 or not target.exists():
         tail = (proc.stderr or proc.stdout)[-400:]
         raise SourceUnavailableError(f"dukascopy-node failed for {name}: {tail}")
