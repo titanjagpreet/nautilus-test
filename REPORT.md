@@ -180,15 +180,18 @@ Re-scored from the recorded replies on 2026-10-12T15:00:36+00:00 UTC: model-leve
   | p04 Pine pyramiding | invalid JSON (missing comma) | valid spec |
   | e02 "make it long only" | returned the spec unchanged — correctly, it already was long-only; the builder rejected no-op edits | a meaningless tag edit (eval and builder bug, both fixed) |
 
-* **Structured output:** the spend ledger of the machine that ran the eval confirms that **all 56 writer calls
+* **Structured output:** the spend ledger of the machine that ran the eval shows that **all 56 writer calls
   (generate, edit, from_pine) ran in JSON mode**: DeepSeek rejected strict function calling for the writer on the
-  first call and the provider fell back, as designed. The judge (`deepseek-v4-pro`, a 356-byte schema without
-  `$ref` or `anyOf`) got strict tools on all 40 calls, so the beta endpoint works; what it rejected is either
-  `deepseek-flash` or the writer's 13 KB schema (73 `$ref`, 27 `anyOf`). The API's reason was not logged then; it
-  is now (`python -m strategy_lab.ai spend` → `mode_rejections`). So the 88% first-try validity is JSON mode's
-  number — the invalid JSON and schema violations above are exactly what schema-enforced decoding would remove —
-  and the validator + repair loop, not the API, is what made the output reliable. If the rejection turns out to be
-  a schema feature, a strict-compatible schema should lift first-try validity; that needs one more measured run.
+  first call and the provider fell back, as designed, while the judge (`deepseek-v4-pro`, a 356-byte schema without
+  `$ref` or `anyOf`) got strict tools on all 40 calls. The 400's message was not logged then; it is now (`python -m
+  strategy_lab.ai spend` → `mode_rejections`), and one more call (2026-10-12, $0.0017) named the cause: **"field
+  `anyOf`: missing field `type`"** — DeepSeek's strict mode needs a `type` on every `anyOf` branch, so the writer
+  schema's 57 bare-`$ref` branches failed (not in DeepSeek's docs). So the 88% first-try validity is JSON mode's
+  number — its invalid JSON and schema violations are what schema-enforced decoding removes — and the validator +
+  repair loop, not the API, made the output reliable. Strict tools now get a schema with every such branch inlined
+  (`transport.typed_union_branches`, tested to accept exactly the same documents; 52 KB instead of 13 KB, cached
+  after the first call). **Not yet measured:** whether DeepSeek accepts it and how much first-try validity
+  improves; a rejection would again be logged and fall back to JSON mode.
 * **Intent:** objective checks 100%, judge 91% (39 judged). A manual check of 11 judge verdicts agreed on 9
   (`evals/judge_check.md`); with the two disagreements corrected the judge score would be ~95%. The objective
   checks are coarse — g11 passed them while missing its key condition — and **the model's own notes can be

@@ -213,9 +213,10 @@ with the Numba on-disk cache); 1,600-run sweep 48.5 s on 1 core, 15.2 s on 4.
 
 **Acceptance so far:** provider layer, generate / edit / explain / from_pine, validation + repair + escalation,
 caching-friendly prompts, cost ledger and spend limits ✅ (`tests/test_ai_*.py`: 48 tests through the real
-`openai` / `anthropic` SDKs with synthetic, clearly labelled responses on a mock HTTP transport). **The eval has
-not run yet: no API key exists in this environment** (`.env` absent). `make eval` runs it on every provider with
-a key; results go to REPORT.md, `evals/results/latest.json` and `evals/recorded/` (replayed by the tests).
+`openai` / `anthropic` SDKs with synthetic, clearly labelled responses on a mock HTTP transport). No API key
+exists in this sandbox, so the eval ran on the user's machine (DeepSeek, below). `make eval` runs it on every
+provider with a key; results go to REPORT.md, `evals/results/latest.json` and `evals/recorded/` (replayed by the
+tests).
 
 **Built** (`strategy_lab/ai/`): `config/llm.json` (models, prices checked 2026-10-12 with sources, budgets $3 /
 $1, DeepSeek peak windows); `providers/` — DeepSeek and Kimi through `openai` (base URLs), Claude Haiku 5.5
@@ -248,6 +249,11 @@ Claude were not evaluated (no keys). Details and the default-writer recommendati
   (e02) got no verdict; label parsing is now tolerant ("Candidate A") and judge replies are recorded.
 - Windows: text files were read with the locale encoding → UTF-8 everywhere; recordings now also store the
   structured-output mode, tokens and cost of every attempt and the item definition they answer.
+- Every writer call ran in JSON mode: DeepSeek's strict tools were rejected with a 400 whose message was thrown
+  away. Rejections are now logged with the reason; one call named it ("field `anyOf`: missing field `type`"), and
+  strict tools now get a schema with every `anyOf` branch typed (`transport.typed_union_branches`, proven to
+  accept the same documents). **Open:** confirm DeepSeek accepts it, then re-run the DeepSeek eval to measure
+  first-try validity under strict tools (projected ~$0.14 of the $0.95 eval budget left).
 
 ## Phase 6 — the lab (2026-10-12) ✅
 
@@ -287,9 +293,9 @@ breakout over 2024 gives identical results on both engines (58 trades, +1,518.98
 
 ## Phase 8 — quality, demo, report (2026-10-12)
 
-**Checks:** `make lint` clean (ruff + mypy, strict on spec, engines, lab and AI); **225 tests pass, 1 skipped**
-(the replay of recorded AI replies, which exist only after `make eval` with a key). From a **clean clone**:
-`make setup` → `make lint` → `make demo` (44 s) → `make test` (225 passed) — with `STRATEGY_LAB_DATA_DIR`
+**Checks:** `make lint` clean (ruff + mypy, strict on spec, engines, lab and AI); **236 tests pass**, including
+the replay of the recorded DeepSeek replies. From a **clean clone** (before the eval):
+`make setup` → `make lint` → `make demo` (44 s) → `make test` (225 passed, the replay skipped) — with `STRATEGY_LAB_DATA_DIR`
 pointing at the already downloaded history instead of re-running `make data`, which was verified in Phase 1.
 
 **Found by the quality pass:** a direct exact-equality test of every indicator exposed that WMA/HMA crashed the

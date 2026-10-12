@@ -19,7 +19,7 @@ from strategy_lab.ai.ledger import Ledger
 from strategy_lab.ai.providers.anthropic_provider import AnthropicProvider
 from strategy_lab.ai.providers.base import RefusalError, TruncatedError
 from strategy_lab.ai.providers.openai_compat import TOOL_NAME, OpenAICompatProvider
-from strategy_lab.ai.transport import reply_schema
+from strategy_lab.ai.transport import reply_schema, typed_union_branches
 
 SCHEMA = reply_schema()
 REPLY = {
@@ -158,13 +158,14 @@ def test_deepseek_strict_tools_then_json_mode(ledger: Ledger) -> None:
     )
     provider = OpenAICompatProvider("deepseek", "deepseek-flash", "k", ledger, http_client=rec.client())
     schema = reply_schema("$def")
+    strict_estimate = provider.estimate_cost("S", [("user", "U")], schema)
     data, usage = provider.complete_json("S", "U", schema)
     assert data == REPLY
     assert usage.mode == "strict_tools"
     url, body = rec.requests[0]
     assert url == "https://api.deepseek.com/beta/chat/completions"
     assert body["tools"][0]["function"]["strict"] is True
-    assert body["tools"][0]["function"]["parameters"] == schema
+    assert body["tools"][0]["function"]["parameters"] == typed_union_branches(schema, "$def")
     assert body["tool_choice"] == {"type": "function", "function": {"name": TOOL_NAME}}
     assert body["thinking"] == {"type": "disabled"}
     assert body["max_tokens"] == 8192
@@ -185,6 +186,7 @@ def test_deepseek_strict_tools_then_json_mode(ledger: Ledger) -> None:
     (rejection,) = ledger.mode_rejections()
     assert (rejection["mode"], rejection["reason"]) == ("strict_tools", "unsupported schema")
     assert [c["cost_usd"] for c in ledger.calls()][1] == 0.0, "a rejected mode is logged but not billed"
+    assert provider.estimate_cost("S", [("user", "U")], schema) < strict_estimate, "estimates the schema sent"
 
 
 def test_kimi_json_schema_request_and_cached_tokens(ledger: Ledger) -> None:

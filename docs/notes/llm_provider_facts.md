@@ -24,6 +24,10 @@ build sandbox and also failed DNS from the web-fetch tool, so these facts come f
   - **No** `json_schema` response format (only `text` / `json_object`).
   - Strict function calling is beta: base URL `/beta`, `"strict": true` on every function; all properties
     `required`, `additionalProperties: false`; no `minLength/maxLength/minItems/maxItems`.
+  - **Measured, not in the docs (2026-10-12, `deepseek-flash`):** an `anyOf` branch without `type` (e.g. a bare
+    `{"$ref": ...}`) is rejected with HTTP 400 "Invalid tool parameters schema : field `anyOf`: missing field
+    `type`". Unknown whether the `{"anyOf": [...]}` node itself also needs a `type`: the branch error is reported
+    first either way. The docs' only `anyOf` example has typed (string) branches.
 - Caching: automatic, best-effort, prefix units. `usage.prompt_cache_hit_tokens`,
   `usage.prompt_cache_miss_tokens` (sum = `prompt_tokens`); `prompt_tokens_details.cached_tokens` = hits.
 - Thinking is ON by default (effort `high`). Disable with `extra_body={"thinking": {"type": "disabled"}}` or

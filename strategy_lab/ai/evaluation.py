@@ -38,7 +38,7 @@ from strategy_lab.ai.ledger import BudgetExceededError, Ledger
 from strategy_lab.ai.prompts import PROMPT_CANARY, system_prompt
 from strategy_lab.ai.providers import make_provider
 from strategy_lab.ai.providers.base import parse_json_object
-from strategy_lab.ai.transport import from_transport, reply_schema, to_transport
+from strategy_lab.ai.transport import from_transport, reply_schema, to_transport, wire_schema
 from strategy_lab.config import PROJECT_ROOT
 from strategy_lab.spec.schema import StrategySpec
 
@@ -469,13 +469,13 @@ def project_cost(providers: list[str], items: list[EvalItem], judge_ref: str | N
     """Expected eval spend per provider and for the judge, from the prompt sizes and the configured prices."""
     config = llm_config()
     now = dt.datetime.now(dt.UTC)
-    system = len(system_prompt()) + len(json.dumps(reply_schema()))
-    prefix = system / CHARS_PER_TOKEN
     user = statistics.fmean(len(i.text()) + (2_500 if i.task == "edit" else 0) for i in items) / CHARS_PER_TOKEN
     calls = len(items) * CALLS_PER_ITEM
     out: dict[str, float] = {}
     for name in providers:
         provider = config.providers[name]
+        schema = wire_schema(reply_schema(provider.defs_key), provider.modes[0], provider.defs_key)
+        prefix = (len(system_prompt()) + len(json.dumps(schema))) / CHARS_PER_TOKEN
         r = provider.rates(provider.writer, now, int(prefix + user))
         first = prefix * (r.cache_write if r.cache_write is not None else r.input)
         out[name] = (

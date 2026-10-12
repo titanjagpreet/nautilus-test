@@ -39,5 +39,9 @@
   "sweep_144/nautilus/4 cores": {
     "wall_s": 218.61,
     "peak_rss_mb": 3297.3
+  },
+  "sweep_1600/nautilus/1 core": {
+    "wall_s": 10327.37,
+    "peak_rss_mb": 721.3
   }
 }

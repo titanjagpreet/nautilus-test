@@ -3,8 +3,10 @@ fits, and the system prompt must be static (byte-identical) for prompt caching."
 
 from __future__ import annotations
 
+import copy
 import json
 import re
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +14,7 @@ import jsonschema
 import pytest
 
 from strategy_lab.ai import prompts
-from strategy_lab.ai.transport import MAX_DEPTH, from_transport, reply_schema, to_transport
+from strategy_lab.ai.transport import MAX_DEPTH, from_transport, reply_schema, to_transport, typed_union_branches
 from strategy_lab.spec.schema import StrategySpec
 
 CATALOGUE = sorted((Path(__file__).parent.parent / "strategy_lab" / "spec" / "catalogue").glob("*.json"))
@@ -137,6 +139,47 @@ def test_system_prompt_is_static_and_long_enough_to_cache() -> None:
     assert prompts.PROMPT_CANARY in first
     assert len(first) / 4 > 1024  # comfortably above every provider's minimum cacheable prefix
     assert "json" in first.lower()  # DeepSeek JSON mode requires the word
+
+
+def untyped_branches(node: Any) -> int:
+    if isinstance(node, list):
+        return sum(untyped_branches(item) for item in node)
+    if not isinstance(node, dict):
+        return 0
+    return sum("type" not in branch for branch in node.get("anyOf", [])) + untyped_branches(list(node.values()))
+
+
+BREAKING: list[Callable[[dict[str, Any]], None]] = [
+    lambda s: s["rules"].update(entry_long=nested(MAX_DEPTH)),  # still valid
+    lambda s: s["rules"].update(entry_long=nested(MAX_DEPTH + 1)),
+    lambda s: s["rules"].update(entry_long={**nested(0), "op": "=="}),
+    lambda s: s["rules"].update(entry_long={**nested(0), "left": {"input": "close", "bars_ago": 0, "x": 1}}),
+    lambda s: s["indicators"][0].update(params={"period": 14}),
+    lambda s: s["market"].update(direction="sideways"),
+    lambda s: s["risk"].update(stop_loss={"type": "percent"}),
+    lambda s: s["risk"].update(take_profit=None, trailing_stop=None),  # still valid
+]
+
+
+def test_typed_union_branches_accept_the_same_documents() -> None:
+    """DeepSeek's strict tools get every anyOf branch typed (inlined): the documents accepted must not change."""
+    plain = reply_schema("$def")
+    typed = typed_union_branches(plain, "$def")
+    jsonschema.Draft202012Validator.check_schema(typed)
+    assert walk(typed) == []
+    assert untyped_branches(plain) > 0
+    assert untyped_branches(typed) == 0
+    docs = [envelope(None), *map(json.loads, re.findall(r"^Reply:\n(.*)$", prompts.system_prompt(), re.MULTILINE))]
+    for path in CATALOGUE:
+        spec = to_transport(StrategySpec.model_validate_json(path.read_text(encoding="utf-8")))
+        docs.append(envelope(spec))
+        for change in BREAKING:
+            broken = copy.deepcopy(spec)
+            change(broken)
+            docs.append(envelope(broken))
+    verdicts = [jsonschema.Draft202012Validator(plain).is_valid(doc) for doc in docs]
+    assert verdicts == [jsonschema.Draft202012Validator(typed).is_valid(doc) for doc in docs]
+    assert 0 < sum(verdicts) < len(docs)
 
 
 def test_prompt_examples_fit_the_schema() -> None:

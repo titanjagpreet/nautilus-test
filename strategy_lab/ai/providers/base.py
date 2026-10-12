@@ -24,6 +24,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from strategy_lab.ai import transport
 from strategy_lab.ai.config import Mode, ProviderConfig, llm_config
 from strategy_lab.ai.ledger import MODE_REJECTED, Ledger, Usage
 
@@ -123,9 +124,13 @@ class LLMProvider(ABC):
     @abstractmethod
     def _call(self, mode: Mode, system: str, turns: Sequence[Turn], schema: dict[str, Any]) -> RawReply: ...
 
+    def wire_schema(self, mode: Mode, schema: dict[str, Any]) -> dict[str, Any]:
+        return transport.wire_schema(schema, mode, self.config.defs_key)
+
     def estimate_cost(self, system: str, turns: Sequence[Turn], schema: dict[str, Any]) -> float:
         """Worst case for one call: every prompt token uncached, the full output allowance used."""
-        chars = len(system) + sum(len(text) for _, text in turns) + len(json.dumps(schema))
+        sent = self.wire_schema(self.mode, schema)
+        chars = len(system) + sum(len(text) for _, text in turns) + len(json.dumps(sent))
         prompt_tokens = int(chars / CHARS_PER_TOKEN_LOW)
         rates = self.config.rates(self.model, dt.datetime.now(dt.UTC), prompt_tokens)
         write = rates.cache_write if rates.cache_write is not None else rates.input

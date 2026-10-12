@@ -257,6 +257,7 @@ The spec's canonical JSON Schema (Pydantic) cannot be handed to the providers' s
 | `params` as an open map (`additionalProperties: {number}`) | **must be `false`** | must be `false` | must be `false` |
 | `minimum`/`maximum`, `minLength`, `pattern`, `minItems` | not supported | partly | partly |
 | `$defs` key | `$defs` | documented as `$def` | `$defs` |
+| `anyOf` branch that is a bare `$ref` | allowed | **400: "field `anyOf`: missing field `type`"** (found in the real run) | not measured |
 
 So the models write a **transport form** (`strategy_lab/ai/transport.py`), generated from the Pydantic schema:
 condition trees unrolled to 3 levels, params as `[{"name","value"}]` pairs, optional fields required-but-
@@ -338,4 +339,7 @@ What it took for the Numba engine to give *identical* trades (`tests/test_parity
 * **Log why a fallback happened, not only that it did.** The ledger's `mode` column showed afterwards that every
   writer call had silently dropped from DeepSeek's strict tools to JSON mode (the judge's small schema kept
   strict tools), but the 400's message had been discarded, so the cause — model or schema — could not be
-  told. Rejections are now logged at zero cost with the API's reason.
+  told. Rejections are now logged at zero cost with the API's reason; the next single call named it: DeepSeek
+  requires a `type` on every `anyOf` branch, which the docs do not say. For strict tools each such branch is
+  now inlined (`typed_union_branches`, tested to accept exactly the same documents) — a 4× larger schema
+  (52 KB), cached after the first call.

@@ -3,8 +3,9 @@
 Provider facts (checked 2026-10-12, docs/notes/llm_provider_facts.md):
 
 * DeepSeek has no ``json_schema`` response format; strict function calling is a beta on ``/beta`` (every
-  property required, ``additionalProperties: false``, ``$ref`` via ``$def``). JSON mode needs the word "json"
-  and an example in the prompt and may return empty content. Prompt caching is automatic; usage reports
+  property required, ``additionalProperties: false``, ``$ref`` via ``$def``, a ``type`` on every ``anyOf``
+  branch — learnt from a 400 on the first real run). JSON mode needs the word "json" and an example in the
+  prompt and may return empty content. Prompt caching is automatic; usage reports
   ``prompt_cache_hit_tokens`` / ``prompt_cache_miss_tokens``. Thinking is on by default and is turned off.
 * Kimi supports ``response_format={"type": "json_schema", ..., "strict": true}`` and JSON mode; cached tokens
   are in ``usage.prompt_tokens_details.cached_tokens``; ``max_completion_tokens``; no ``temperature``.
@@ -78,7 +79,7 @@ class OpenAICompatProvider(LLMProvider):
                         "name": TOOL_NAME,
                         "description": "Submit the reply object.",
                         "strict": True,
-                        "parameters": schema,
+                        "parameters": self.wire_schema(mode, schema),
                     },
                 }
             ]

@@ -160,6 +160,62 @@ def reply_schema(defs_key: str = "$defs") -> dict[str, Any]:
     }
 
 
+def wire_schema(schema: dict[str, Any], mode: str, defs_key: str) -> dict[str, Any]:
+    """The schema as sent in a structured-output ``mode``: the same documents, in constructs that API accepts."""
+    return typed_union_branches(schema, defs_key) if mode == "strict_tools" else schema
+
+
+def typed_union_branches(schema: dict[str, Any], defs_key: str) -> dict[str, Any]:
+    """``schema`` with every ``anyOf`` branch that is a bare ``$ref`` replaced by the definition it names.
+
+    DeepSeek's strict function calling requires a ``type`` on every ``anyOf`` branch ("Invalid tool parameters
+    schema : field `anyOf`: missing field `type`", HTTP 400 on the first real run) while it accepts ``$ref``
+    elsewhere. A branch that is itself a union is flattened into its parent. The result accepts exactly the same
+    documents; definitions no longer referenced are dropped.
+    """
+    defs: dict[str, Any] = schema[defs_key]
+
+    def branches(option: dict[str, Any]) -> list[Any]:
+        body = walk(defs[option["$ref"].rsplit("/", 1)[-1]] if option.keys() == {"$ref"} else option)
+        return body["anyOf"] if "type" not in body and "anyOf" in body else [body]
+
+    def walk(node: Any) -> Any:
+        if isinstance(node, list):
+            return [walk(item) for item in node]
+        if not isinstance(node, dict):
+            return node
+        out: dict[str, Any] = {}
+        for key, value in node.items():
+            if key == "properties":
+                out[key] = {name: walk(sub) for name, sub in value.items()}
+            elif key == "anyOf":
+                out[key] = [branch for option in value for branch in branches(option)]
+            elif key != defs_key:
+                out[key] = walk(value)
+        return out
+
+    root = walk(schema)
+    walked = {name: walk(body) for name, body in defs.items()}
+    used: set[str] = set()
+    pending = _refs(root)
+    while pending:
+        name = pending.pop()
+        if name not in used:
+            used.add(name)
+            pending |= _refs(walked[name])
+    kept = {name: body for name, body in walked.items() if name in used}
+    return {**root, defs_key: kept} if kept else root
+
+
+def _refs(node: Any) -> set[str]:
+    if isinstance(node, list):
+        return set().union(*(_refs(item) for item in node))
+    if not isinstance(node, dict):
+        return set()
+    found = {node["$ref"].rsplit("/", 1)[-1]} if isinstance(node.get("$ref"), str) else set()
+    return found.union(*(_refs(value) for value in node.values()))
+
+
 def to_transport(spec: StrategySpec) -> dict[str, Any]:
     """Canonical spec → transport form (every field present; params as pairs)."""
     data = spec.model_dump(mode="json")
