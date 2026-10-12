@@ -64,7 +64,7 @@ def true_range(df: pd.DataFrame) -> pd.Series:
 
 def check(actual: pd.Series, expected: pd.Series, first_valid: int) -> None:
     a, e = actual.to_numpy(), expected.to_numpy()
-    assert np.isnan(a[: first_valid]).all(), "value published before warm-up ended"
+    assert np.isnan(a[:first_valid]).all(), "value published before warm-up ended"
     np.testing.assert_allclose(a[first_valid:], e[first_valid:], rtol=1e-9, atol=1e-9)
 
 
@@ -182,11 +182,15 @@ def test_donchian_highest_lowest(ohlcv: pd.DataFrame) -> None:
 
 def test_roc_cci_obv(ohlcv: pd.DataFrame) -> None:
     c = ohlcv["close"]
-    check(run(ohlcv, Indicator(id="x", type="roc", params={"period": 10}))["value"], 100 * (c / c.shift(10) - 1), 10)
+    check(
+        run(ohlcv, Indicator(id="x", type="roc", params={"period": 10}))["value"], 100 * (c / c.shift(10) - 1), 10
+    )
     tp = (ohlcv["high"] + ohlcv["low"] + c) / 3
     sma = tp.rolling(20).mean()
     mad = tp.rolling(20).apply(lambda a: np.mean(np.abs(a - a.mean())), raw=True)
-    check(run(ohlcv, Indicator(id="x", type="cci", params={"period": 20}))["value"], (tp - sma) / (0.015 * mad), 19)
+    check(
+        run(ohlcv, Indicator(id="x", type="cci", params={"period": 20}))["value"], (tp - sma) / (0.015 * mad), 19
+    )
     obv = (np.sign(c.diff().fillna(0.0)) * ohlcv["volume"]).cumsum()
     check(run(ohlcv, Indicator(id="x", type="obv"))["value"], obv, 0)
 

@@ -18,11 +18,11 @@ F64 = npt.NDArray[np.float64]
 NAN = math.nan
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def _pairwise_sum(a: F64, start: int, n: int) -> float:
     """NumPy's ``pairwise_sum`` for contiguous float64 (numpy/_core/src/umath/loops_utils.h.src)."""
     if n < 8:
-        res = -0.0
+        res: float = -0.0
         for i in range(start, start + n):
             res += a[i]
         return res
@@ -47,10 +47,12 @@ def _pairwise_sum(a: F64, start: int, n: int) -> float:
         return res
     n2 = n // 2
     n2 -= n2 % 8
-    return _pairwise_sum(a, start, n2) + _pairwise_sum(a, start + n2, n - n2)
+    left: float = _pairwise_sum(a, start, n2)
+    right: float = _pairwise_sum(a, start + n2, n - n2)
+    return left + right
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def _seq_mean(x: F64, lo: int, hi: int) -> float:
     total = 0.0
     for i in range(lo, hi):
@@ -58,7 +60,7 @@ def _seq_mean(x: F64, lo: int, hi: int) -> float:
     return total / (hi - lo)
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def sma(x: F64, n: int) -> F64:
     out = np.full(len(x), NAN)
     for i in range(n - 1, len(x)):
@@ -66,7 +68,7 @@ def sma(x: F64, n: int) -> F64:
     return out
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def _sma_partial(x: F64, n: int) -> F64:
     """SMA that averages what it has during warm-up (Nautilus's value before ``initialized``)."""
     out = np.empty(len(x))
@@ -76,7 +78,7 @@ def _sma_partial(x: F64, n: int) -> F64:
     return out
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def _ema_values(x: F64, alpha: float) -> F64:
     out = np.empty(len(x))
     prev = 0.0
@@ -102,7 +104,7 @@ def wilder(x: F64, n: int) -> F64:
     return _mask_warmup(_ema_values(x, 1.0 / n), n)
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def _weighted(x: F64, weights: F64) -> F64:
     """``np.average(window, weights=weights[-len(window):])`` per bar, partial windows included."""
     n = len(weights)
@@ -133,7 +135,7 @@ def hma(x: F64, n: int) -> F64:
     return _mask_warmup(_weighted(raw, _hull_weights(root)), n)
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def _rsi(x: F64, n: int) -> F64:
     alpha = 1.0 / n
     out = np.full(len(x), NAN)
@@ -154,7 +156,7 @@ def _rsi(x: F64, n: int) -> F64:
 
 
 def rsi(x: F64, n: int) -> F64:
-    return _rsi(x, n)  # type: ignore[no-any-return]
+    return _rsi(x, n)
 
 
 def macd(x: F64, fast: int, slow: int, signal: int) -> tuple[F64, F64, F64]:
@@ -168,7 +170,7 @@ def macd(x: F64, fast: int, slow: int, signal: int) -> tuple[F64, F64, F64]:
     return line_out, sig_out, line_out - sig_out
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def _bollinger(x: F64, n: int, k: float) -> tuple[F64, F64, F64]:
     size = len(x)
     upper, middle, lower = np.full(size, NAN), np.full(size, NAN), np.full(size, NAN)
@@ -195,7 +197,7 @@ def bbands(x: F64, n: int, k: float) -> tuple[F64, F64, F64, F64]:
     return middle, upper, lower, width
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def true_range(high: F64, low: F64, close: F64) -> F64:
     out = np.empty(len(close))
     prev = close[0] if len(close) else 0.0
@@ -217,7 +219,7 @@ def keltner(high: F64, low: F64, close: F64, n: int, k: float) -> tuple[F64, F64
     return mid, upper, lower
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def _stoch(high: F64, low: F64, close: F64, k_period: int, d_period: int, smooth: int) -> tuple[F64, F64]:
     """Nautilus ``Stochastics(k, d, smooth, SIMPLE, 'moving_average')`` including its flat-window skip."""
     size = len(close)
@@ -252,10 +254,10 @@ def _stoch(high: F64, low: F64, close: F64, k_period: int, d_period: int, smooth
 
 
 def stoch(high: F64, low: F64, close: F64, k: int, d: int, smooth: int) -> tuple[F64, F64]:
-    return _stoch(high, low, close, k, d, smooth)  # type: ignore[no-any-return]
+    return _stoch(high, low, close, k, d, smooth)
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def _adx(high: F64, low: F64, close: F64, n: int) -> tuple[F64, F64, F64]:
     size = len(close)
     adx_out, pdi_out, mdi_out = np.full(size, NAN), np.full(size, NAN), np.full(size, NAN)
@@ -290,10 +292,10 @@ def _adx(high: F64, low: F64, close: F64, n: int) -> tuple[F64, F64, F64]:
 
 
 def adx(high: F64, low: F64, close: F64, n: int) -> tuple[F64, F64, F64]:
-    return _adx(high, low, close, n)  # type: ignore[no-any-return]
+    return _adx(high, low, close, n)
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def _rolling_extreme(x: F64, n: int, highest: bool) -> F64:
     out = np.full(len(x), NAN)
     for i in range(n - 1, len(x)):
@@ -305,11 +307,11 @@ def _rolling_extreme(x: F64, n: int, highest: bool) -> F64:
 
 
 def highest(x: F64, n: int) -> F64:
-    return _rolling_extreme(x, n, True)  # type: ignore[no-any-return]
+    return _rolling_extreme(x, n, True)
 
 
 def lowest(x: F64, n: int) -> F64:
-    return _rolling_extreme(x, n, False)  # type: ignore[no-any-return]
+    return _rolling_extreme(x, n, False)
 
 
 def donchian(high: F64, low: F64, n: int) -> tuple[F64, F64, F64]:
@@ -317,7 +319,7 @@ def donchian(high: F64, low: F64, n: int) -> tuple[F64, F64, F64]:
     return (upper + lower) / 2, upper, lower
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def _vwap(high: F64, low: F64, close: F64, volume: F64, day: npt.NDArray[np.int64]) -> F64:
     """Nautilus VWAP keyed by the bar-open day of month; zero-volume bars keep the previous value."""
     out = np.empty(len(close))
@@ -338,10 +340,10 @@ def _vwap(high: F64, low: F64, close: F64, volume: F64, day: npt.NDArray[np.int6
 
 
 def vwap(high: F64, low: F64, close: F64, volume: F64, day_of_month: npt.NDArray[np.int64]) -> F64:
-    return _vwap(high, low, close, volume, day_of_month)  # type: ignore[no-any-return]
+    return _vwap(high, low, close, volume, day_of_month)
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def _roc(x: F64, n: int) -> F64:
     out = np.full(len(x), NAN)
     for i in range(n, len(x)):
@@ -350,10 +352,10 @@ def _roc(x: F64, n: int) -> F64:
 
 
 def roc(x: F64, n: int) -> F64:
-    return _roc(x, n)  # type: ignore[no-any-return]
+    return _roc(x, n)
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def _cci(high: F64, low: F64, close: F64, n: int) -> F64:
     size = len(close)
     out = np.full(size, NAN)
@@ -371,10 +373,10 @@ def _cci(high: F64, low: F64, close: F64, n: int) -> F64:
 
 
 def cci(high: F64, low: F64, close: F64, n: int) -> F64:
-    return _cci(high, low, close, n)  # type: ignore[no-any-return]
+    return _cci(high, low, close, n)
 
 
-@nb.njit(cache=True)  # type: ignore[misc]
+@nb.njit(cache=True)
 def _obv(close: F64, volume: F64) -> F64:
     out = np.empty(len(close))
     value = 0.0
@@ -389,4 +391,4 @@ def _obv(close: F64, volume: F64) -> F64:
 
 
 def obv(close: F64, volume: F64) -> F64:
-    return _obv(close, volume)  # type: ignore[no-any-return]
+    return _obv(close, volume)

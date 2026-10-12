@@ -171,14 +171,15 @@ class Compiled:
         self.series[("$input", "hour_utc")] = OperandSource(base.hour_utc(), identity)
         last_funding = np.searchsorted(funding_ns, base.close_ns, side="right").astype(np.int64) - 1
         rates = np.r_[funding_rate_8h, np.nan]  # index -1 → NaN (no funding settled yet)
-        self.series[("$input", "funding_rate")] = OperandSource(rates[np.where(last_funding >= 0, last_funding, -1)],
-                                                                identity)  # fmt: skip
+        funding_at_base = rates[np.where(last_funding >= 0, last_funding, -1)]
+        self.series[("$input", "funding_rate")] = OperandSource(funding_at_base, identity)
         self.type_of = {i.id: i.type for i in spec.indicators}
 
     def value(self, operand: Operand, extra: int = 0) -> F64:
         """Operand value at every base bar (NaN where unavailable)."""
         if isinstance(operand, ConstOperand):
             return np.full(self.n, operand.value)
+        key: tuple[str, str]
         if isinstance(operand, InputOperand):
             key = ("$input", operand.input)
         else:

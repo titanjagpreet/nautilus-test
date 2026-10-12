@@ -34,9 +34,11 @@ def cmp(left: dict[str, Any], op: str, right: dict[str, Any]) -> dict[str, Any]:
 def test_catalogue_specs_validate_and_render(path: Path) -> None:
     result = validate(json.loads(path.read_text()))
     assert result.ok, result.errors
-    text = render(result.spec)  # type: ignore[arg-type]
-    assert result.spec is not None and result.spec.meta.name in text
-    assert "Stop-loss:" in text and "MISSING" not in text
+    assert result.spec is not None
+    text = render(result.spec)
+    assert result.spec.meta.name in text
+    assert "Stop-loss:" in text
+    assert "MISSING" not in text
 
 
 def test_catalogue_has_ten_strategies_with_descriptions() -> None:
@@ -211,7 +213,8 @@ def test_direction_needs_matching_entry_rules() -> None:
     data = ema_cross()
     data["market"]["direction"] = "long"
     result = validate(data)
-    assert result.ok and {w.code for w in result.warnings} == {"UNUSED_RULE"}
+    assert result.ok
+    assert {w.code for w in result.warnings} == {"UNUSED_RULE"}
 
 
 def test_overfitting_warning_counts_tunable_parameters() -> None:

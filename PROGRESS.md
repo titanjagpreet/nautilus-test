@@ -7,8 +7,8 @@ Running log of what is done, measured numbers, problems and decisions. Updated a
 - [x] Network check done; sources and fallbacks recorded.
 - [x] BTC and XAU history downloaded, checksummed where possible, validated, resampled, documented in DATA.md.
 - [x] The hand-written Nautilus strategy runs with fees, slippage and funding visible; speed and memory measured.
-- [ ] Spec schema, validator (look-ahead and higher-timeframe guards), plain-language renderer, 10 catalogue strategies.
-- [ ] SpecStrategy runs any valid spec in Nautilus.
+- [x] Spec schema, validator (look-ahead and higher-timeframe guards), plain-language renderer, 10 catalogue strategies.
+- [x] SpecStrategy runs any valid spec in Nautilus.
 - [ ] The fast engine matches Nautilus on all 10 catalogue strategies within the stated tolerance, or every difference is documented.
 - [ ] AI generate, edit, explain and from_pine work through the provider layer (DeepSeek default, Kimi alternative, Claude Haiku optional) with validation and repair, escalation, caching and cost logging.
 - [ ] The eval has run on every provider with a key; the comparison and recommendation are in REPORT.md; total API spend is under budget.
@@ -142,3 +142,33 @@ patched**, 1.3 GB; 5 y of 15m bars 68 s / 30 s, ~1.05 GB.
 - `reject_stop_orders=True` leaves a position unprotected when its stop is already through the market → False.
 - pandas 3 µs timestamps silently broke funding (and nearly bar timestamps) → normalise to ns at storage.
 - Quadratic `pd.concat` in Nautilus's `PortfolioAnalyzer` → tested patch (4.5× faster on 1m).
+
+## Phase 3 — the strategy format (2026-10-12) ✅
+
+**Acceptance:** all 10 catalogue strategies validate and backtest in Nautilus on real data ✅
+(`tests/test_spec_nautilus.py`) · every indicator has a reference-calculation test ✅ (`tests/test_indicators.py`,
+rtol 1e-9, warm-up boundaries included) · look-ahead and higher-timeframe guards proven by tests ✅
+(`tests/test_validator.py`, 43 tests) · plain-language renderer ✅ (`spec/render.py`).
+
+**Built** (`strategy_lab/spec/`): Pydantic v2 schema `spec_version 0.1` with exported JSON Schema
+(`schema.json`, `python -m strategy_lab.spec`); indicator catalogue (18 types, bounds, outputs, Nautilus
+mapping); validator returning every error at once with JSON paths; renderer; tunable-parameter listing/setting;
+bar-by-bar evaluator; shared position-management decisions; 10 catalogue strategies with descriptions.
+`engines/nautilus/`: generic `SpecStrategy` (no code generation, no eval), the execution feed, the spec runner,
+and the engine-neutral `BacktestResult` (`engines/results.py`).
+
+**Execution semantics** are written down in ARCHITECTURE.md and implemented in Nautilus with 1 ns latency, an
+"open" bar per base bar and a direction-aware intrabar path fed through a streaming generator (LEARNINGS §7).
+On every catalogue strategy, our trade + funding ledger reproduces Nautilus's own final account balance to
+< 1e-6 USDC.
+
+**Spec additions beyond the brief (and why).** `hour_utc` input (needed for the gold session breakout);
+`funding_rate` input normalised to an 8-hour rate (Binance funds every 8 h, Lighter hourly); an `execution`
+section whose only valid values are the safe ones — the unsafe ones exist so Pine-style look-ahead settings
+(`process_orders_on_close`, `lookahead_on`) parse and are rejected with a clear look-ahead error.
+`slippage_ticks` is limited to 0–1 because Nautilus's fill model cannot move a fill further (LEARNINGS §4).
+
+**Decisions.** Nautilus's built-in indicators are used where they exist, with options chosen to match textbook
+definitions where Nautilus's defaults differ (RSI → Wilder ×100, ATR → Wilder, WMA → linear weights,
+Stochastics %D → SMA, ROC → n+1 window, VWAP → bar-open session); ADX, OBV and highest/lowest are ours.
+No warm-up padding: indicators warm up inside the requested range in both engines.
