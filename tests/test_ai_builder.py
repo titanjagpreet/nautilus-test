@@ -149,15 +149,25 @@ def test_refusals(ledger: Ledger) -> None:
     assert Builder(safety_stop).generate("...").status == "refused"
 
 
-def test_edit_returns_a_computed_diff_and_rejects_no_op_edits(ledger: Ledger) -> None:
+def test_edit_returns_a_computed_diff(ledger: Ledger) -> None:
     edited = good_spec()
     edited["risk"]["leverage"] = 2.0
-    writer = ScriptedProvider([reply(spec=good_spec()), reply(spec=edited, changes=["leverage 3 → 2"])], ledger)
+    writer = ScriptedProvider([reply(spec=edited, changes=["leverage 3 → 2"])], ledger)
     result = Builder(writer).edit(EMA, "use 2x leverage")
     assert result.status == "spec"
-    assert result.repairs == 1
+    assert result.first_try_ok
     assert result.diff == ["$.risk.leverage: 3 → 2"]
     assert result.changes == ["leverage 3 → 2"]
+
+
+def test_edit_that_needs_no_change_is_accepted_with_a_warning(ledger: Ledger) -> None:
+    """e.g. "make it long only" on a long-only spec: never force a meaningless edit through repairs."""
+    writer = ScriptedProvider([reply(spec=good_spec(), changes=["already uses 3x leverage"])], ledger)
+    result = Builder(writer).edit(EMA, "use 3x leverage")
+    assert result.status == "spec"
+    assert result.repairs == 0
+    assert result.diff == []
+    assert any(w.startswith("UNCHANGED") for w in result.warnings)
 
 
 def test_explain_and_from_pine(ledger: Ledger) -> None:

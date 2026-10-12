@@ -118,13 +118,13 @@ class Ledger:
         return [dict(r) for r in rows]
 
     def summary(self) -> list[dict[str, Any]]:
-        """Spend per scope, provider, model and feature."""
+        """Spend per scope, provider, model, feature and structured-output mode."""
         with self._connect() as db:
             rows = db.execute(
-                """SELECT scope, provider, model, feature, COUNT(*) AS calls,
+                """SELECT scope, provider, model, feature, mode, COUNT(*) AS calls,
                           SUM(input_tokens) AS input_tokens, SUM(cached_tokens) AS cached_tokens,
                           SUM(cache_write_tokens) AS cache_write_tokens, SUM(output_tokens) AS output_tokens,
                           SUM(cost_usd) AS cost_usd, AVG(latency_s) AS mean_latency_s
-                   FROM llm_calls GROUP BY scope, provider, model, feature ORDER BY cost_usd DESC"""
+                   FROM llm_calls GROUP BY scope, provider, model, feature, mode ORDER BY cost_usd DESC"""
             ).fetchall()
         return [dict(r) for r in rows]

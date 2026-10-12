@@ -8,6 +8,7 @@ providers' candidates for one prompt are graded in a single call, under anonymou
 from __future__ import annotations
 
 import random
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -93,16 +94,28 @@ def judge_message(
     return "\n\n---\n\n".join(parts), labels
 
 
+@dataclass(frozen=True)
+class Judgement:
+    verdicts: dict[str, Verdict]  # by candidate key
+    labels: dict[str, str]  # anonymous label → candidate key, as shown to the judge
+    reply: dict[str, Any]  # the judge's raw reply, kept for the record
+
+
+def _label(text: object) -> str:
+    """'A', 'Candidate A', 'CANDIDATE A:' → 'A'."""
+    letters = re.findall(r"\b([A-Z])\b", str(text).upper())
+    return letters[-1] if letters else ""
+
+
 def judge(
     provider: LLMProvider, request: str, candidates: dict[str, str], base: StrategySpec | None, seed: str
-) -> dict[str, Verdict]:
-    """Verdict per candidate key."""
+) -> Judgement:
     message, labels = judge_message(request, candidates, base, seed)
     provider.max_output_tokens = JUDGE_MAX_OUTPUT_TOKENS
     data, _ = provider.complete_json(JUDGE_SYSTEM, message, JUDGE_SCHEMA, feature="judge")
-    out: dict[str, Verdict] = {}
+    verdicts: dict[str, Verdict] = {}
     for verdict in data.get("verdicts", []):
-        key = labels.get(str(verdict.get("candidate", "")).strip().upper())
+        key = labels.get(_label(verdict.get("candidate", "")))
         if key is not None and verdict.get("score") in (0, 1, 2):
-            out[key] = Verdict(int(verdict["score"]), str(verdict.get("reason", "")))
-    return out
+            verdicts[key] = Verdict(int(verdict["score"]), str(verdict.get("reason", "")))
+    return Judgement(verdicts, labels, data)

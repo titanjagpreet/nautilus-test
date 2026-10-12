@@ -10,9 +10,9 @@
     <p class="small muted">Costs come from each API's usage fields (uncached, cached and cache-write prompt tokens, output tokens) priced with <code>config/llm.json</code> (prices checked {{ prices_checked }}). Every call is checked against both limits before it is sent.</p>
     <h3>By provider, model and feature</h3>
     <table class="compact">
-      <tr><th>scope</th><th>model</th><th>feature</th><th>calls</th><th>input</th><th>cached</th><th>output</th><th>cost</th><th>mean latency</th></tr>
-      {% for s in summary %}<tr><td>{{ s.scope }}</td><td>{{ s.provider }}:{{ s.model }}</td><td>{{ s.feature }}</td><td>{{ s.calls }}</td><td>{{ s.input_tokens|num }}</td><td>{{ s.cached_tokens|num }}</td><td>{{ s.output_tokens|num }}</td><td>${{ '%.4f'|format(s.cost_usd) }}</td><td>{{ s.mean_latency_s|num(1) }} s</td></tr>
-      {% else %}<tr><td colspan="9" class="muted">no LLM calls yet</td></tr>{% endfor %}
+      <tr><th>scope</th><th>model</th><th>feature</th><th>output mode</th><th>calls</th><th>input</th><th>cached</th><th>output</th><th>cost</th><th>mean latency</th></tr>
+      {% for s in summary %}<tr><td>{{ s.scope }}</td><td>{{ s.provider }}:{{ s.model }}</td><td>{{ s.feature }}</td><td class="small">{{ s.mode }}</td><td>{{ s.calls }}</td><td>{{ s.input_tokens|num }}</td><td>{{ s.cached_tokens|num }}</td><td>{{ s.output_tokens|num }}</td><td>${{ '%.4f'|format(s.cost_usd) }}</td><td>{{ s.mean_latency_s|num(1) }} s</td></tr>
+      {% else %}<tr><td colspan="10" class="muted">no LLM calls yet</td></tr>{% endfor %}
     </table>
   </section>
   <section class="card">

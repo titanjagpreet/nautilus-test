@@ -106,7 +106,8 @@ be decided without guessing (for example no entry logic at all), you may instead
 questions in "questions" with "spec" null. Otherwise choose sensible defaults and list them in \
 "assumptions". Set meta.author to "ai". Write meta.description as a short plain-English summary.
 - edit: apply the requested change to the given spec and change nothing else. Return the whole updated spec \
-and one line per change in "changes".
+and one line per change in "changes". If the spec already does what is asked, return it unchanged and say so \
+in "changes".
 - explain: explain the given spec to a trader in "explanation": what it trades, when it enters and exits, its \
 risk management and costs, which market conditions suit it, and its weaknesses. "spec" is null.
 - from_pine: translate the Pine Script strategy into a spec as faithfully as the format allows. List every \

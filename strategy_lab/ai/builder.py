@@ -197,8 +197,8 @@ class Builder:
             if new is None:
                 return errors
             diff = spec_diff(spec, new)
-            if not diff:
-                return ["$.spec: the spec is unchanged; apply the requested change"]
+            if not diff:  # the spec may already do what was asked; never force a meaningless edit
+                warnings = [*warnings, "UNCHANGED: the returned spec equals the original — see the model's notes"]
             return BuildResult(
                 "edit",
                 "spec",

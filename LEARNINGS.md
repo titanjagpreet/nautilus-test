@@ -320,3 +320,18 @@ What it took for the Numba engine to give *identical* trades (`tests/test_parity
 * **Pinned CDN plus a verified local copy.** jsDelivr is blocked in the build sandbox but the npm registry is
   not: `scripts/vendor_assets.py` downloads the same pinned versions from the registry, checks the SHA-512
   integrity value, and the pages prefer the local copy.
+
+## 18. What a real LLM run taught (DeepSeek eval, 45 cases)
+
+* **The repair loop did the heavy lifting.** 12% of first replies were unusable — two invalid JSON, schema
+  violations, a rule that can never fire, an operator the format lacks — and every one was fixed by sending the
+  exact validator errors back. Measure validity *after* the pipeline, not per call.
+* **Don't trust the model's description of its own output.** One reply's notes claimed a "1% above VWAP"
+  threshold that its rules did not implement. Only the deterministic rendering of the spec is trustworthy.
+* **Evals test the harness as much as the model.** The real run exposed four harness bugs, none of them the
+  model's: a safety rule that called an incomplete reply "unsafe"; an edit request that was a no-op for its base
+  strategy, plus a builder that refused to accept "nothing to change"; a judge that never saw the user's answers
+  to the model's clarifying questions; and Windows' locale text encoding. Recording every reply made it possible
+  to fix the scoring and re-score without paying for a new run (`--rescore`).
+* **An LLM judge needs the same context as the writer** and a human spot-check: it agreed with a manual review
+  on 9 of 11 cases, once too harsh, once misled by missing context.

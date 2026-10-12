@@ -10,8 +10,8 @@ Running log of what is done, measured numbers, problems and decisions. Updated a
 - [x] Spec schema, validator (look-ahead and higher-timeframe guards), plain-language renderer, 10 catalogue strategies.
 - [x] SpecStrategy runs any valid spec in Nautilus.
 - [x] The fast engine matches Nautilus on all 10 catalogue strategies within the stated tolerance, or every difference is documented.
-- [ ] AI generate, edit, explain and from_pine work through the provider layer (DeepSeek default, Kimi alternative, Claude Haiku optional) with validation and repair, escalation, caching and cost logging.
-- [ ] The eval has run on every provider with a key; the comparison and recommendation are in REPORT.md; total API spend is under budget.
+- [x] AI generate, edit, explain and from_pine work through the provider layer (DeepSeek default, Kimi alternative, Claude Haiku optional) with validation and repair, escalation, caching and cost logging. *(Live on DeepSeek via the eval — generate, edit, from_pine, repair, caching, cost logging; explain, escalation and the Kimi/Claude paths are covered by SDK-level tests only: no keys.)*
+- [x] The eval has run on every provider with a key; the comparison and recommendation are in REPORT.md; total API spend is under budget. *(One key — DeepSeek; $0.047 of the $1 eval / $3 total budget.)*
 - [x] The lab works: out-of-sample, walk-forward, heat-map, Monte Carlo, score with its parts, warnings.
 - [x] UI pages work: Builder, Backtest, Lab, Compare, Costs.
 - [x] All tests pass; ruff and mypy are clean; `make demo` works from a clean checkout.
@@ -209,7 +209,7 @@ with the Numba on-disk cache); 1,600-run sweep 48.5 s on 1 core, 15.2 s on 4.
   engine-neutral `contracts.py`, helpers moved to `engines/inputs.py` / `engines/results.py`, lazy Nautilus
   imports: ≈480–550 MB per worker.
 
-## Phase 5 — AI strategy builder (2026-10-12) — built and tested; eval waiting for an API key
+## Phase 5 — AI strategy builder (2026-10-12) ✅ (eval run on DeepSeek, the one provider with a key)
 
 **Acceptance so far:** provider layer, generate / edit / explain / from_pine, validation + repair + escalation,
 caching-friendly prompts, cost ledger and spend limits ✅ (`tests/test_ai_*.py`: 48 tests through the real
@@ -230,6 +230,24 @@ fields with both limits checked *before* every call; `judge.py` + `evaluation.py
 
 **Network facts:** api.anthropic.com is reachable from this sandbox; api.deepseek.com and api.moonshot.ai are
 refused by the egress proxy (403), so here only Claude can be evaluated; elsewhere all three run.
+
+**Eval result (DeepSeek, run by the user on Windows, 2026-10-12, $0.047):** 45 cases; first-try valid 88%, valid
+after repair 100% (9 repairs, 0 escalations); intent: objective checks 100%, judge 91% (39 judged; manual check
+of 11 verdicts agrees on 9 — `evals/judge_check.md`); adversarial safety 100% model / 100% system (re-scored
+from the recordings, see below); $0.00063 per request (~$0.63 per 1,000); latency p50 3.9 s, p95 8.8 s. Kimi and
+Claude were not evaluated (no keys). Details and the default-writer recommendation: REPORT.md §5.
+
+**Problems the real run exposed, all fixed** (none was the model's fault):
+- Safety scoring counted a first reply *without* a spec as unsafe (a03, a04: 60% model-level). A reply that
+  contains nothing unsafe is incomplete, not unsafe → `adversarial_scores` fixed; re-scored from the recorded
+  replies with `--rescore` (no API calls) → 100%.
+- e02 asked to "make it long only" a strategy that already was; the model said so, but the builder rejected
+  unchanged specs and forced a meaningless edit → the eval item now uses a two-sided base, and an unchanged edit
+  is accepted with an `UNCHANGED` warning (the prompt says to return the spec unchanged when nothing is needed).
+- The judge saw only the vague prompt for g29/g30, not the user's clarifying answers → now included. One case
+  (e02) got no verdict; label parsing is now tolerant ("Candidate A") and judge replies are recorded.
+- Windows: text files were read with the locale encoding → UTF-8 everywhere; recordings now also store the
+  structured-output mode, tokens and cost of every attempt and the item definition they answer.
 
 ## Phase 6 — the lab (2026-10-12) ✅
 
@@ -287,5 +305,5 @@ endpoints; synthetic data only in tests, labelled.
 NautilusTrader measurements, parity and speed tables, lab results, AI design and data-location note),
 ARCHITECTURE (AI, lab, API/jobs sections), LEARNINGS §15–17, `make demo`.
 
-**Still open:** the AI eval needs an API key (Phase 5); the last two NautilusTrader benchmark rows (1,600-run
-sweep, 1 and 4 cores) are still running and land in REPORT.md automatically when done.
+**Still open:** the last two NautilusTrader benchmark rows (1,600-run sweep, 1 and 4 cores) are still running
+and land in REPORT.md automatically when done.
