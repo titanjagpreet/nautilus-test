@@ -11,11 +11,11 @@ Running log of what is done, measured numbers, problems and decisions. Updated a
 - [x] SpecStrategy runs any valid spec in Nautilus.
 - [x] The fast engine matches Nautilus on all 10 catalogue strategies within the stated tolerance, or every difference is documented.
 - [x] AI generate, edit, explain and from_pine work through the provider layer (DeepSeek default, Kimi alternative, Claude Haiku optional) with validation and repair, escalation, caching and cost logging. *(Live on DeepSeek via the eval — generate, edit, from_pine, repair, caching, cost logging; explain, escalation and the Kimi/Claude paths are covered by SDK-level tests only: no keys.)*
-- [x] The eval has run on every provider with a key; the comparison and recommendation are in REPORT.md; total API spend is under budget. *(One key — DeepSeek; $0.047 of the $1 eval / $3 total budget.)*
+- [x] The eval has run on every provider with a key; the comparison and recommendation are in REPORT.md; total API spend is under budget. *(One key — DeepSeek; eval $0.047 of $1, total $0.053 of $3.)*
 - [x] The lab works: out-of-sample, walk-forward, heat-map, Monte Carlo, score with its parts, warnings.
 - [x] UI pages work: Builder, Backtest, Lab, Compare, Costs.
 - [x] All tests pass; ruff and mypy are clean; `make demo` works from a clean checkout.
-- [ ] LEARNINGS.md, ARCHITECTURE.md, DATA.md and REPORT.md are written with real measured numbers.
+- [x] LEARNINGS.md, ARCHITECTURE.md, DATA.md and REPORT.md are written with real measured numbers.
 - [x] No secrets in git; no live-trading code; no fabricated data.
 
 ---
@@ -173,11 +173,11 @@ definitions where Nautilus's defaults differ (RSI → Wilder ×100, ATR → Wild
 Stochastics %D → SMA, ROC → n+1 window, VWAP → bar-open session); ADX, OBV and highest/lowest are ours.
 No warm-up padding: indicators warm up inside the requested range in both engines.
 
-## Phase 4 — the fast engine (2026-10-12)
+## Phase 4 — the fast engine (2026-10-12) ✅
 
 **Acceptance:** parity on all 10 catalogue strategies ✅ — same trades, same timestamps, net P&L within 0.5%
 (`tests/test_parity.py`: 10 strategies × 2 fee profiles + 7 risk-feature variants + 3 strategies covering the
-remaining indicator types, 2024-H1; `make parity`: the full year 2024). `make bench` table in REPORT.md: fast engine ✅, Nautilus ⏳ (running, ~6 h).
+remaining indicator types, 2024-H1; `make parity`: the full year 2024). `make bench` table in REPORT.md ✅ (both engines; the NautilusTrader part ran ~6 h).
 
 **Built** (`strategy_lab/engines/fast/`): Numba ports of all 18 indicators, bit-identical to Nautilus's
 (NumPy's pairwise summation ported for the SMA family, sequential sums where Nautilus uses them, the same EMA
@@ -194,7 +194,8 @@ The residue is float64 accumulation order (the fast engine sums in float64, Naut
 `Money`); in USDC it is below 1e-7. Nautilus 223 s for the 20 runs, the fast engine 2.9 s (×78).
 
 **Fast-engine speed** (REPORT.md): one year of 1-minute execution 0.10 s warm (0.29 s from a cold process
-with the Numba on-disk cache); 1,600-run sweep 48.5 s on 1 core, 15.2 s on 4.
+with the Numba on-disk cache; 3.4 s for the very first run in a new checkout, which compiles); 1,600-run sweep
+48.5 s on 1 core, 15.2 s on 4 — NautilusTrader: 10,327 s (×213) and 2,522 s (×166, 3.4 GB peak).
 
 **Problems found and fixed.**
 - One take-profit one tick apart in 108 trades → `Price.as_double()` is one ulp off the decimal for large
@@ -316,5 +317,6 @@ endpoints; synthetic data only in tests, labelled.
 NautilusTrader measurements, parity and speed tables, lab results, AI design and data-location note),
 ARCHITECTURE (AI, lab, API/jobs sections), LEARNINGS §15–17, `make demo`.
 
-**Still open:** the last two NautilusTrader benchmark rows (1,600-run sweep, 1 and 4 cores) are still running
-and land in REPORT.md automatically when done.
+**Benchmark complete:** NautilusTrader's 1,600-run sweep took 10,327 s on 1 core and 2,522 s on 4 (3.4 GB
+peak), vs 48.5 s / 15.2 s for the fast engine; the REPORT verdict quotes them. The fast engine's "cold" row
+was relabelled: it loads compiled code from Numba's cache (0.29 s); a first run that compiles takes 3.4 s.

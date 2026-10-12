@@ -21,9 +21,10 @@ Why, from what was measured here:
    it is a lot of machinery around the engine rather than inside it.
 2. **Too slow and too heavy for interactive use and sweeps.** One year of 1-minute execution for a 1-hour
    strategy: **5.9 s per run in NautilusTrader (11.6 s for the first run in a fresh process) vs 0.03–0.10 s in
-   the Numba engine** — 60 to 175 times slower. A 144-run parameter sweep: **853 s vs 4.9 s** on one core. An
-   empty engine costs 370 MB and a run 0.7–1.3 GB, so parallel runs need one process each (4 cores: 3.3 GB for
-   the 144-run sweep). The lab's ~1,400-backtest robustness report takes ~40 s on the fast engine; at 5.9 s per
+   the Numba engine** — 60 to 175 times slower. A 144-run parameter sweep: **853 s vs 4.9 s** on one core; a
+   1,600-run sweep: **10,327 s (2 h 52 min) vs 48.5 s** on one core (×213) and **2,522 s vs 15.2 s** on four
+   (×166). An empty engine costs 370 MB and a run 0.7–1.3 GB, so parallel runs need one process each (4 cores:
+   3.4 GB for the 1,600-run sweep vs 2.3 GB for the fast engine). The lab's ~1,400-backtest robustness report takes ~40 s on the fast engine; at 5.9 s per
    run it would take over two hours in NautilusTrader.
 3. **Fragile at scale without patches.** Its `PortfolioAnalyzer` is quadratic in the number of trades: a 1-minute
    strategy over a year took 575 s stock and 127 s with our tested patch (§10).
@@ -108,13 +109,14 @@ the largest relative P&L difference is 1.3e-10 (float64 vs fixed-point accumulat
 
 Workload: the EMA crossover (1-hour signals, 1-minute execution) over 2024 on BTC; sweeps over the two EMA
 periods (12×12 and 40×40). Peak memory = the whole process tree. A "single" run is a first run in a fresh
-process (NautilusTrader's import and first-run setup included; the fast engine's "cold" row includes loading
-its compiled code from Numba's on-disk cache); sweep rows show the steady-state cost per run.
+process (NautilusTrader's import and first-run setup included; the fast engine's "cold" row is a fresh process
+that loads its compiled code from Numba's on-disk cache — the very first run in a new checkout, which compiles
+it, took 3.4 s); sweep rows show the steady-state cost per run.
 
 <!-- BENCH:BEGIN -->
 | scenario | engine | cores | wall time | peak RSS | per backtest |
 |---|---|---|---|---|---|
-| single | fast (cold (incl. JIT compile)) | 1 | 0.3 s | 482 MB | 0.290 s |
+| single | fast (cold, Numba cache) | 1 | 0.3 s | 482 MB | 0.290 s |
 | single | fast (warm) | 1 | 0.1 s | 483 MB | 0.100 s |
 | sweep 144 | fast | 1 core | 4.9 s | 491 MB | 0.034 s |
 | sweep 144 | fast | 4 cores | 3.9 s | 2,224 MB | 0.027 s |
@@ -123,6 +125,8 @@ its compiled code from Numba's on-disk cache); sweep rows show the steady-state 
 | single | nautilus | 1 | 11.6 s | 677 MB | 11.550 s |
 | sweep 144 | nautilus | 1 core | 853.4 s | 679 MB | 5.926 s |
 | sweep 144 | nautilus | 4 cores | 218.6 s | 3,297 MB | 1.518 s |
+| sweep 1600 | nautilus | 1 core | 10,327.4 s | 721 MB | 6.455 s |
+| sweep 1600 | nautilus | 4 cores | 2,522.2 s | 3,391 MB | 1.576 s |
 
 Machine: 4 vCPU, 15.7 GB RAM; workload: EMA crossover, BTC-PERP 1h on 1m execution, 2024-01-01 → 2025-01-01.
 <!-- BENCH:END -->

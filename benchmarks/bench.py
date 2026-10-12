@@ -92,7 +92,7 @@ def _nautilus_run(spec: StrategySpec, market: MarketData) -> Any:
 def scenarios(spec: StrategySpec) -> dict[str, Callable[[], Any]]:
     market = load_market("BTC-PERP", START, END, contract_spec("BTC-PERP").price_decimals)
     out: dict[str, Callable[[], Any]] = {
-        "single/fast/cold (incl. JIT compile)": lambda: fast.run_spec(spec, START, END, market=market),
+        "single/fast/cold, Numba cache": lambda: fast.run_spec(spec, START, END, market=market),
         "single/fast/warm": lambda: fast.run_spec(spec, START, END, market=market),
         "single/nautilus": lambda: _nautilus_run(spec, market),
     }

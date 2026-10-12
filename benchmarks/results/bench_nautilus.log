@@ -8,3 +8,19 @@ running sweep_144/nautilus/4 cores ...
 running sweep_1600/nautilus/1 core ...
   {'wall_s': 10327.37, 'peak_rss_mb': 721.3}
 running sweep_1600/nautilus/4 cores ...
+  {'wall_s': 2522.15, 'peak_rss_mb': 3391.3}
+| scenario | engine | cores | wall time | peak RSS | per backtest |
+|---|---|---|---|---|---|
+| single | fast (cold (incl. JIT compile)) | 1 | 0.3 s | 482 MB | 0.290 s |
+| single | fast (warm) | 1 | 0.1 s | 483 MB | 0.100 s |
+| sweep 144 | fast | 1 core | 4.9 s | 491 MB | 0.034 s |
+| sweep 144 | fast | 4 cores | 3.9 s | 2,224 MB | 0.027 s |
+| sweep 1600 | fast | 1 core | 48.5 s | 425 MB | 0.030 s |
+| sweep 1600 | fast | 4 cores | 15.2 s | 2,278 MB | 0.009 s |
+| single | nautilus | 1 | 11.6 s | 677 MB | 11.550 s |
+| sweep 144 | nautilus | 1 core | 853.4 s | 679 MB | 5.926 s |
+| sweep 144 | nautilus | 4 cores | 218.6 s | 3,297 MB | 1.518 s |
+| sweep 1600 | nautilus | 1 core | 10,327.4 s | 721 MB | 6.455 s |
+| sweep 1600 | nautilus | 4 cores | 2,522.2 s | 3,391 MB | 1.576 s |
+
+Machine: 4 vCPU, 15.7 GB RAM; workload: EMA crossover, BTC-PERP 1h on 1m execution, 2024-01-01 → 2025-01-01.

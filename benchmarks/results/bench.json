@@ -4,7 +4,7 @@
     "ram_gb": 15.7,
     "workload": "EMA crossover, BTC-PERP 1h on 1m execution, 2024-01-01 \u2192 2025-01-01"
   },
-  "single/fast/cold (incl. JIT compile)": {
+  "single/fast/cold, Numba cache": {
     "wall_s": 0.29,
     "peak_rss_mb": 481.7
   },
@@ -43,5 +43,9 @@
   "sweep_1600/nautilus/1 core": {
     "wall_s": 10327.37,
     "peak_rss_mb": 721.3
+  },
+  "sweep_1600/nautilus/4 cores": {
+    "wall_s": 2522.15,
+    "peak_rss_mb": 3391.3
   }
 }
