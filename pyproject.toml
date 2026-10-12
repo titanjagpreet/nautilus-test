@@ -34,6 +34,7 @@ module-root = ""
 [dependency-groups]
 dev = [
     "hypothesis==6.169.0",
+    "jsonschema==4.26.0",
     "mypy==2.4.0",
     "pandas-stubs==3.0.5.260914",
     "pre-commit==4.6.2",
@@ -75,7 +76,7 @@ ignore_missing_imports = true
 exclude = ["data/", "strategy_lab/ui/static/"]
 
 [[tool.mypy.overrides]]
-module = ["strategy_lab.spec.*", "strategy_lab.engines.*", "strategy_lab.lab.*"]
+module = ["strategy_lab.spec.*", "strategy_lab.engines.*", "strategy_lab.lab.*", "strategy_lab.ai.*"]
 strict = true
 
 [tool.pytest.ini_options]

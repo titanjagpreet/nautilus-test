@@ -3,7 +3,7 @@ SHELL := /bin/bash
 UV ?= uv
 PY := $(UV) run python
 
-.PHONY: help setup network data lint test bench parity
+.PHONY: help setup network data lint test bench parity eval
 
 help:  ## Show this help
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-10s %s\n", $$1, $$2}'
@@ -32,3 +32,6 @@ bench:  ## Speed + memory of both engines (1 backtest, 144 and 1,600-run sweeps;
 
 parity:  ## Fast engine vs Nautilus on the 10 catalogue strategies over 2024 -> REPORT.md
 	$(PY) benchmarks/parity_report.py
+
+eval:  ## AI builder eval on every provider with a key in .env (spend-capped at $1) -> REPORT.md
+	$(PY) -m strategy_lab.ai.evaluation

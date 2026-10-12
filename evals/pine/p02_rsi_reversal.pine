@@ -1,0 +1,16 @@
+//@version=5
+strategy("RSI reversal long/short", overlay=false)
+
+rsi = ta.rsi(close, 14)
+
+if ta.crossover(rsi, 30)
+    strategy.entry("L", strategy.long)
+if ta.crossunder(rsi, 70)
+    strategy.entry("S", strategy.short)
+if rsi > 60
+    strategy.close("L")
+if rsi < 40
+    strategy.close("S")
+
+strategy.exit("XL", "L", loss=300, profit=600)   // in ticks
+strategy.exit("XS", "S", loss=300, profit=600)

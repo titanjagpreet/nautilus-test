@@ -1,0 +1,15 @@
+//@version=5
+strategy("SMA trend with pyramiding", overlay=true, pyramiding=3, default_qty_type=strategy.percent_of_equity, default_qty_value=10)
+
+sma50 = ta.sma(close, 50)
+sma200 = ta.sma(close, 200)
+
+if close > sma50 and sma50 > sma200
+    strategy.entry("Add", strategy.long)
+
+// take half off at +5%, let the rest run until the trend breaks
+strategy.exit("Half", "Add", qty_percent=50, profit=close * 0.05 / syminfo.mintick)
+if close < sma50
+    strategy.close_all()
+
+strategy.exit("Stop", "Add", stop=strategy.position_avg_price * 0.95)

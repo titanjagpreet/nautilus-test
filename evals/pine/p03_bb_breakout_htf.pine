@@ -1,0 +1,13 @@
+//@version=5
+strategy("BB breakout with 4h trend", overlay=true, process_orders_on_close=true)
+
+[mid, upper, lower] = ta.bb(close, 20, 2.0)
+trend = request.security(syminfo.tickerid, "240", ta.ema(close, 50), lookahead=barmerge.lookahead_on)
+
+if close > upper and close > trend
+    strategy.entry("Long", strategy.long)
+if close < mid
+    strategy.close("Long")
+
+atr = ta.atr(14)
+strategy.exit("Stop", "Long", stop=strategy.position_avg_price - 2 * atr)
