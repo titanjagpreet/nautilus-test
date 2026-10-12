@@ -19,37 +19,72 @@ NAN = math.nan
 
 
 @nb.njit(cache=True)
-def _pairwise_sum(a: F64, start: int, n: int) -> float:
-    """NumPy's ``pairwise_sum`` for contiguous float64 (numpy/_core/src/umath/loops_utils.h.src)."""
+def _pairwise_block(a: F64, start: int, n: int) -> float:
+    """The base case of NumPy's ``pairwise_sum`` (n <= 128): unrolled by 8 below n, plain loop below 8."""
     if n < 8:
         res: float = -0.0
         for i in range(start, start + n):
             res += a[i]
         return res
+    r0, r1, r2, r3 = a[start], a[start + 1], a[start + 2], a[start + 3]
+    r4, r5, r6, r7 = a[start + 4], a[start + 5], a[start + 6], a[start + 7]
+    i = 8
+    while i < n - (n % 8):
+        r0 += a[start + i]
+        r1 += a[start + i + 1]
+        r2 += a[start + i + 2]
+        r3 += a[start + i + 3]
+        r4 += a[start + i + 4]
+        r5 += a[start + i + 5]
+        r6 += a[start + i + 6]
+        r7 += a[start + i + 7]
+        i += 8
+    res = ((r0 + r1) + (r2 + r3)) + ((r4 + r5) + (r6 + r7))
+    while i < n:
+        res += a[start + i]
+        i += 1
+    return res
+
+
+@nb.njit(cache=True)
+def _pairwise_sum(a: F64, start: int, n: int) -> float:
+    """NumPy's ``pairwise_sum`` for contiguous float64 (numpy/_core/src/umath/loops_utils.h.src).
+
+    NumPy recurses: blocks of at most 128 are summed by ``_pairwise_block``, larger ranges split at
+    ``n/2`` rounded down to a multiple of 8 and return ``left + right``. The recursion is replayed here with an
+    explicit stack (same additions in the same order) because Numba's on-disk cache cannot reload a
+    self-recursive function: the reloaded code segfaults (LEARNINGS §16).
+    """
     if n <= 128:
-        r0, r1, r2, r3 = a[start], a[start + 1], a[start + 2], a[start + 3]
-        r4, r5, r6, r7 = a[start + 4], a[start + 5], a[start + 6], a[start + 7]
-        i = 8
-        while i < n - (n % 8):
-            r0 += a[start + i]
-            r1 += a[start + i + 1]
-            r2 += a[start + i + 2]
-            r3 += a[start + i + 3]
-            r4 += a[start + i + 4]
-            r5 += a[start + i + 5]
-            r6 += a[start + i + 6]
-            r7 += a[start + i + 7]
-            i += 8
-        res = ((r0 + r1) + (r2 + r3)) + ((r4 + r5) + (r6 + r7))
-        while i < n:
-            res += a[start + i]
-            i += 1
-        return res
-    n2 = n // 2
-    n2 -= n2 % 8
-    left: float = _pairwise_sum(a, start, n2)
-    right: float = _pairwise_sum(a, start + n2, n - n2)
-    return left + right
+        return _pairwise_block(a, start, n)
+    depth = 64  # ranges halve each level: 64 levels cover any array that fits in memory
+    starts, sizes, stage = np.empty(depth, np.int64), np.empty(depth, np.int64), np.zeros(depth, np.int64)
+    values = np.empty(depth)
+    top, n_values = 0, 0
+    starts[0], sizes[0] = start, n
+    while top >= 0:
+        lo, size = starts[top], sizes[top]
+        if size <= 128:
+            values[n_values] = _pairwise_block(a, lo, size)
+            n_values += 1
+            top -= 1
+            continue
+        half = size // 2
+        half -= half % 8
+        if stage[top] == 0:  # left half next
+            stage[top] = 1
+            top += 1
+            starts[top], sizes[top], stage[top] = lo, half, 0
+        elif stage[top] == 1:  # then the right half
+            stage[top] = 2
+            top += 1
+            starts[top], sizes[top], stage[top] = lo + half, size - half, 0
+        else:  # both halves done: left + right
+            n_values -= 1
+            values[n_values - 1] = values[n_values - 1] + values[n_values]
+            top -= 1
+    total: float = values[0]
+    return total
 
 
 @nb.njit(cache=True)

@@ -90,3 +90,61 @@ VARIANTS = {
 @pytest.mark.parametrize("name", VARIANTS)
 def test_risk_feature_parity(name: str) -> None:
     assert_parity(VARIANTS[name])
+
+
+def _ind(id_: str, type_: str, source: str | None = None, **params: float) -> dict[str, Any]:
+    return {"id": id_, "type": type_, "params": params, "source": source}
+
+
+def _op(indicator: str, output: str | None = None, bars_ago: int = 0) -> dict[str, Any]:
+    return {"indicator": indicator, "output": output, "bars_ago": bars_ago}
+
+
+CLOSE = {"input": "close"}
+
+
+def _strategy(
+    name: str, timeframe: str, indicators: list[dict[str, Any]], rules: dict[str, Any]
+) -> dict[str, Any]:
+    data = catalogue("01")
+    data["meta"]["name"] = name
+    data["market"]["timeframe"] = timeframe
+    data["indicators"] = indicators
+    data["rules"] = rules
+    return data
+
+
+# The indicator types no catalogue strategy uses (wma, hma, roc, cci, obv, atr, highest, lowest), end to end.
+INDICATOR_SPECS = {
+    "hma_wma_roc": _strategy("HMA/WMA with ROC", "1h",
+        [_ind("hma", "hma", period=21), _ind("wma", "wma", period=50), _ind("roc", "roc", period=10)],
+        {"entry_long": {"op": "all", "args": [{"op": "crosses_above", "left": _op("hma"), "right": _op("wma")},
+                                              {"op": ">", "left": _op("roc"), "right": {"value": 0}}]},
+         "exit_long": {"op": "crosses_below", "left": _op("hma"), "right": _op("wma")},
+         "entry_short": {"op": "all", "args": [{"op": "crosses_below", "left": _op("hma"), "right": _op("wma")},
+                                               {"op": "<", "left": _op("roc"), "right": {"value": 0}}]},
+         "exit_short": {"op": "crosses_above", "left": _op("hma"), "right": _op("wma")}}),
+    "cci_obv_atr": _strategy("CCI with OBV and ATR filters", "4h",
+        [_ind("cci", "cci", period=20), _ind("obv", "obv"), _ind("atr", "atr", period=14)],
+        {"entry_long": {"op": "all", "args": [
+            {"op": "crosses_above", "left": _op("cci"), "right": {"value": -100}},
+            {"op": ">", "left": _op("obv"), "right": _op("obv", bars_ago=20)},
+            {"op": ">", "left": _op("atr"), "right": _op("atr", bars_ago=5)}]},
+         "exit_long": {"op": ">", "left": _op("cci"), "right": {"value": 100}},
+         "entry_short": {"op": "all", "args": [
+            {"op": "crosses_below", "left": _op("cci"), "right": {"value": 100}},
+            {"op": "<", "left": _op("obv"), "right": _op("obv", bars_ago=20)}]},
+         "exit_short": {"op": "<", "left": _op("cci"), "right": {"value": -100}}}),
+    "highest_lowest_channel": _strategy("Highest/lowest channel", "15m",
+        [_ind("hi", "highest", period=40), _ind("lo", "lowest", period=40),
+         _ind("hi_exit", "highest", "close", period=10), _ind("lo_exit", "lowest", "close", period=10)],
+        {"entry_long": {"op": ">", "left": CLOSE, "right": _op("hi", bars_ago=1)},
+         "exit_long": {"op": "<", "left": CLOSE, "right": _op("lo_exit", bars_ago=1)},
+         "entry_short": {"op": "<", "left": CLOSE, "right": _op("lo", bars_ago=1)},
+         "exit_short": {"op": ">", "left": CLOSE, "right": _op("hi_exit", bars_ago=1)}}),
+}  # fmt: skip
+
+
+@pytest.mark.parametrize("name", INDICATOR_SPECS)
+def test_indicator_coverage_parity(name: str) -> None:
+    assert_parity(INDICATOR_SPECS[name])

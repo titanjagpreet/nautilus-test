@@ -176,8 +176,8 @@ No warm-up padding: indicators warm up inside the requested range in both engine
 ## Phase 4 — the fast engine (2026-10-12)
 
 **Acceptance:** parity on all 10 catalogue strategies ✅ — same trades, same timestamps, net P&L within 0.5%
-(`tests/test_parity.py`: 10 strategies × 2 fee profiles + 7 risk-feature variants, 2024-H1; `make parity`:
-the full year 2024). `make bench` table in REPORT.md: fast engine ✅, Nautilus ⏳ (running, ~6 h).
+(`tests/test_parity.py`: 10 strategies × 2 fee profiles + 7 risk-feature variants + 3 strategies covering the
+remaining indicator types, 2024-H1; `make parity`: the full year 2024). `make bench` table in REPORT.md: fast engine ✅, Nautilus ⏳ (running, ~6 h).
 
 **Built** (`strategy_lab/engines/fast/`): Numba ports of all 18 indicators, bit-identical to Nautilus's
 (NumPy's pairwise summation ported for the SMA family, sequential sums where Nautilus uses them, the same EMA
@@ -201,6 +201,10 @@ with the Numba on-disk cache); 1,600-run sweep 48.5 s on 1 core, 15.2 s on 4.
   raw values; canonicalise prices on the tick grid (LEARNINGS §13). Parity is now exact.
 - Trailing stop tightened into a gapped market: Nautilus rejects the modify and keeps the old stop
   (LEARNINGS §14) → the fast engine mirrors it; the spec strategy reads the live trigger price.
+- (Found in Phase 8) WMA and HMA crashed the fast engine whenever its compiled code came from Numba's on-disk
+  cache (a recursive jitted function) — no catalogue strategy used them, so parity never ran them → iterative
+  pairwise sum, a direct exact-equality test for every indicator type, and three parity strategies covering
+  the eight indicator types the catalogue does not use (LEARNINGS §16).
 - Fast-engine sweep workers each imported Nautilus (≈870 MB per process) through a shared helper module →
   engine-neutral `contracts.py`, helpers moved to `engines/inputs.py` / `engines/results.py`, lazy Nautilus
   imports: ≈480–550 MB per worker.

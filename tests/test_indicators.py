@@ -204,6 +204,66 @@ def test_vwap_resets_each_utc_day(ohlcv: pd.DataFrame) -> None:
 
 
 def test_every_catalogue_type_is_covered() -> None:
-    tested = {"sma", "ema", "wma", "hma", "rsi", "macd", "bbands", "atr", "keltner", "stoch", "adx", "donchian",
-              "highest", "lowest", "roc", "cci", "obv", "vwap"}  # fmt: skip
+    tested = {
+        "sma",
+        "ema",
+        "wma",
+        "hma",
+        "rsi",
+        "macd",
+        "bbands",
+        "atr",
+        "keltner",
+        "stoch",
+        "adx",
+        "donchian",
+        "highest",
+        "lowest",
+        "roc",
+        "cci",
+        "obv",
+        "vwap",
+    }
     assert tested == set(CATALOGUE)
+
+
+VARIANTS = [Indicator(id="x", type=t, params={}) for t in CATALOGUE] + [
+    Indicator(id="x", type="sma", params={"period": 200}),
+    Indicator(id="x", type="ema", params={"period": 3}, source="hl2"),
+    Indicator(id="x", type="rsi", params={"period": 2}),
+    Indicator(id="x", type="bbands", params={"period": 50, "std": 2.5}),
+    Indicator(id="x", type="stoch", params={"k_period": 5, "d_period": 1, "smooth": 1}),
+    Indicator(id="x", type="highest", params={"period": 55}, source="close"),
+]
+
+
+def fast_values(df: pd.DataFrame, ind: Indicator) -> pd.DataFrame:
+    from strategy_lab.engines.fast.compile import BarFrame, compute_indicator  # noqa: PLC0415
+
+    frame = df.rename(columns={"time": "ts"})
+    frame["ts"] = pd.to_datetime(frame["ts"], utc=True)
+    out = compute_indicator(ind, BarFrame.from_frame(frame, "15m"))
+    return pd.DataFrame({k: out[k] for k in CATALOGUE[ind.type].outputs})
+
+
+def real_bars() -> pd.DataFrame | None:
+    from strategy_lab.data import storage  # noqa: PLC0415
+    from strategy_lab.data.resample import resample_bars  # noqa: PLC0415
+
+    if ("binance_spot_gh", "BTCUSDT") not in storage.list_datasets():
+        return None
+    bars = storage.read_bars(
+        "binance_spot_gh", "BTCUSDT", pd.Timestamp("2024-03-01", tz="UTC"), pd.Timestamp("2024-05-01", tz="UTC")
+    )
+    bars15 = resample_bars(bars, "15m")
+    return bars15.rename(columns={"ts": "time"})[["time", "open", "high", "low", "close", "volume"]]
+
+
+@pytest.mark.parametrize("ind", VARIANTS, ids=lambda i: f"{i.type}{sorted(i.params.items())}{i.source or ''}")
+def test_fast_engine_indicators_are_bit_identical(ohlcv: pd.DataFrame, ind: Indicator) -> None:
+    """The Numba ports equal the runtimes the Nautilus strategy uses exactly (NaN during warm-up included), on
+    the synthetic series and — when downloaded — on two months of real BTC 15-minute bars."""
+    for df in (ohlcv, real_bars()):
+        if df is None:
+            continue
+        np.testing.assert_array_equal(fast_values(df, ind).to_numpy(), run(df, ind).to_numpy())

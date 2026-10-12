@@ -282,7 +282,8 @@ What it took for the Numba engine to give *identical* trades (`tests/test_parity
 * **Bit-identical indicators.** "Same formula" is not enough at crossing points: a moving-average cross decided
   by 1e-12 flips a trade. NumPy's `mean` uses pairwise summation, Nautilus's SMA keeps a running sum, and EMA
   seeding differs between libraries; each was ported in the exact operation order (`engines/fast/indicators.py`,
-  `_pairwise_sum`), and every indicator is tested for exact equality against Nautilus on real data.
+  `_pairwise_sum`), and every indicator type is tested for exact equality with the runtimes the Nautilus
+  strategy uses, on synthetic and on real BTC data.
 * **One shared definition of "a decision".** Position rules (exits before entries, time exit, reversal only
   without cooldown, daily cap by the signal's UTC date, trailing update after the next open's gap check) live
   in one module (`spec/decisions.py`) used by Nautilus's strategy and mirrored by the jitted loop.
@@ -294,7 +295,14 @@ What it took for the Numba engine to give *identical* trades (`tests/test_parity
   ~870 MB; after moving contract specs and shared helpers to engine-neutral modules and importing Nautilus lazily,
   a fast-engine worker costs ~480–550 MB (mostly Numba/LLVM and the data).
 * **Numba's on-disk cache** (`cache=True`) makes a cold process start in ~0.3 s instead of several seconds of JIT
-  compilation.
+  compilation — **but a self-recursive jitted function does not survive it.** The pairwise-summation port was
+  recursive like NumPy's; it worked when freshly compiled and **segfaulted when loaded from the cache** in the
+  next process. No catalogue strategy used WMA or HMA, so the parity suite never ran it; a direct
+  exact-equality test of every indicator (`tests/test_indicators.py::test_fast_engine_indicators_are_bit_identical`)
+  exposed it. Fix: the same additions in the same order with an explicit stack (verified equal to
+  `np.add.reduce` for sizes 0 … 1,000,003), plus parity strategies that use the eight indicator types the
+  catalogue does not (`tests/test_parity.py::test_indicator_coverage_parity`). Lesson: parity on a catalogue
+  only covers what the catalogue uses — test every building block directly too.
 
 ## 17. The lab and the UI
 
