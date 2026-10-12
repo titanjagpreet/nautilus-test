@@ -22,6 +22,7 @@ from strategy_lab.ai.evaluation import (
     adversarial_scores,
     expectation_checks,
     load_items,
+    project_cost,
     render_summary,
     run_item,
     summarise,
@@ -208,7 +209,7 @@ def test_summary_and_report_table() -> None:
         {"anthropic (claude-haiku-5-5)": s},
         {"started": "t0", "finished": "t1", "judge": None, "eval_spend": 0.0, "skipped": ""},
     )
-    assert "| anthropic (claude-haiku-5-5) | 3 | 50% | 50% | 1 / 0 | 25% / 100% | 100% / 100% | 0 |" in table
+    assert "| anthropic (claude-haiku-5-5) | 3 | 50% | 50% | 1 / 0 | 25% / 100% (1 judged) | 100% / 100% | 0 |" in table
 
 
 def test_judge_maps_shuffled_labels_back(ledger: Ledger) -> None:
@@ -257,3 +258,13 @@ def test_recorded_replies_replay_to_the_same_outcome(path: Path, ledger: Ledger)
             else:
                 result = builder.generate(it.text(), answers=round_["answers"])
             assert result.status == round_["status"], item_id
+
+
+def test_cost_projection_scales_with_writers_and_judge() -> None:
+    one = project_cost(["deepseek"], ITEMS, None)
+    assert set(one) == {"deepseek"}
+    assert 0 < one["deepseek"] < 1
+    both = project_cost(["deepseek", "anthropic"], ITEMS, "anthropic:claude-opus-5-5")
+    assert set(both) == {"deepseek", "anthropic", "judge"}
+    assert both["deepseek"] == pytest.approx(one["deepseek"])
+    assert both["judge"] > project_cost(["deepseek"], ITEMS, "anthropic:claude-opus-5-5")["judge"]
