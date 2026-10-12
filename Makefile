@@ -3,7 +3,7 @@ SHELL := /bin/bash
 UV ?= uv
 PY := $(UV) run python
 
-.PHONY: help setup network data lint test bench parity eval ui
+.PHONY: help setup network data lint test demo bench parity eval ui
 
 help:  ## Show this help
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-10s %s\n", $$1, $$2}'
@@ -27,6 +27,9 @@ lint:  ## ruff + mypy
 
 test:  ## Run the test suite
 	$(UV) run pytest -n auto
+
+demo:  ## End to end on the downloaded data: catalogue, both engines, lab, AI (if a key is set)
+	$(PY) scripts/demo.py
 
 bench:  ## Speed + memory of both engines (1 backtest, 144 and 1,600-run sweeps; hours) -> REPORT.md
 	$(PY) benchmarks/bench.py

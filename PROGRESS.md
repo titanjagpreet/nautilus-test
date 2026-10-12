@@ -12,8 +12,8 @@ Running log of what is done, measured numbers, problems and decisions. Updated a
 - [x] The fast engine matches Nautilus on all 10 catalogue strategies within the stated tolerance, or every difference is documented.
 - [ ] AI generate, edit, explain and from_pine work through the provider layer (DeepSeek default, Kimi alternative, Claude Haiku optional) with validation and repair, escalation, caching and cost logging.
 - [ ] The eval has run on every provider with a key; the comparison and recommendation are in REPORT.md; total API spend is under budget.
-- [ ] The lab works: out-of-sample, walk-forward, heat-map, Monte Carlo, score with its parts, warnings.
-- [ ] UI pages work: Builder, Backtest, Lab, Compare, Costs.
+- [x] The lab works: out-of-sample, walk-forward, heat-map, Monte Carlo, score with its parts, warnings.
+- [x] UI pages work: Builder, Backtest, Lab, Compare, Costs.
 - [ ] All tests pass; ruff and mypy are clean; `make demo` works from a clean checkout.
 - [ ] LEARNINGS.md, ARCHITECTURE.md, DATA.md and REPORT.md are written with real measured numbers.
 - [ ] No secrets in git; no live-trading code; no fabricated data.
@@ -204,3 +204,59 @@ with the Numba on-disk cache); 1,600-run sweep 48.5 s on 1 core, 15.2 s on 4.
 - Fast-engine sweep workers each imported Nautilus (≈870 MB per process) through a shared helper module →
   engine-neutral `contracts.py`, helpers moved to `engines/inputs.py` / `engines/results.py`, lazy Nautilus
   imports: ≈480–550 MB per worker.
+
+## Phase 5 — AI strategy builder (2026-10-12) — built and tested; eval waiting for an API key
+
+**Acceptance so far:** provider layer, generate / edit / explain / from_pine, validation + repair + escalation,
+caching-friendly prompts, cost ledger and spend limits ✅ (`tests/test_ai_*.py`: 48 tests through the real
+`openai` / `anthropic` SDKs with synthetic, clearly labelled responses on a mock HTTP transport). **The eval has
+not run yet: no API key exists in this environment** (`.env` absent). `make eval` runs it on every provider with
+a key; results go to REPORT.md, `evals/results/latest.json` and `evals/recorded/` (replayed by the tests).
+
+**Built** (`strategy_lab/ai/`): `config/llm.json` (models, prices checked 2026-10-12 with sources, budgets $3 /
+$1, DeepSeek peak windows); `providers/` — DeepSeek and Kimi through `openai` (base URLs), Claude Haiku 5.5
+through `anthropic` (claude-api skill read first); structured-output ladder per provider (Claude: JSON schema
+→ prompted JSON; Kimi: JSON schema → JSON mode; DeepSeek: strict tools on `/beta` → JSON mode with "json" and an
+example), falling back on HTTP 400 and remembering the working mode; `transport.py` — strict-mode-safe view of
+the spec (LEARNINGS §15); `prompts.py` — one static ~5K-token system prompt (byte-identical for caching) built
+from the indicator catalogue; `builder.py` — up to 2 repairs quoting the exact validator errors, then one
+escalation (DeepSeek → v4-pro, Kimi → k3), then a clean failure; `ledger.py` — SQLite spend log from usage
+fields with both limits checked *before* every call; `judge.py` + `evaluation.py` — 40 prompts + 5 adversarial
+(`evals/ai_eval.json`), objective intent checks, blind batched LLM judge, model-level vs system-level safety.
+
+**Network facts:** api.anthropic.com is reachable from this sandbox; api.deepseek.com and api.moonshot.ai are
+refused by the egress proxy (403), so here only Claude can be evaluated; elsewhere all three run.
+
+## Phase 6 — the lab (2026-10-12) ✅
+
+**Acceptance:** out-of-sample, walk-forward, heat-map, Monte Carlo, score with its parts, warnings ✅
+(`tests/test_lab.py`; real-data runs below).
+
+**Built** (`strategy_lab/lab/`): `evaluator.py` (window runs with indicator warm-up on earlier data — new
+`trade_from` in the fast engine, proven equal to a full run's trades by a real-data test), `optimize.py` (grid,
+Optuna TPE ≤ 4 parameters), `validation.py` (70/30 OOS, 6m/2m walk-forward with chained OOS equity, heat-map
+neighbour stability, 1,000-sample trade bootstrap), `robustness.py` (score from six weighted parts, ten warning
+types, JSON report), CLI `python -m strategy_lab.lab`.
+
+**Real runs** (BTC, 2023-07-01 → 2026-07-01, grid 9×9, fast engine, ~1,400 backtests in 37–51 s each):
+
+| strategy | score | OOS Sharpe (in → out) | WF windows profitable | MC P(loss) | return vs buy & hold |
+|---|---|---|---|---|---|
+| Donchian breakout | 65 | 1.08 → 0.49 | 60% of 15 | 10% | +18.3% vs +92.4% |
+| Keltner pullback | 43 | 1.22 → −0.02 | 40% of 15 | 39% | +2.8% vs +92.4% |
+| EMA crossover | 30 | 0.95 → −0.50 | 47% of 15 | 89% | −9.0% vs +92.4% |
+
+The lab does what it is for: tuned in-sample Sharpe ratios near 1 collapse out of sample for two of three
+templates, and none beats holding BTC over the period.
+
+## Phase 7 — API and UI (2026-10-12) ✅
+
+**Acceptance:** all five pages work against real data ✅ (`tests/test_api.py`, 12 tests incl. real background
+jobs on both engines; screenshots in `docs/screenshots/`).
+
+**Built:** FastAPI JSON API (`strategy_lab/api/app.py`) + Jinja2/HTMX pages (`pages.py`), SQLite store
+(`store.py`: specs, jobs, backtests and lab reports with spec, data range, source and engine version), background
+jobs in spawned worker processes (`jobs.py`, `worker.py`), dark theme, Lightweight Charts 4.2.3 + Plotly 2.35.2
+pinned on jsDelivr with an offline copy fetched from the npm registry and SHA-512-verified
+(`scripts/vendor_assets.py`; jsDelivr is blocked here, the npm registry is not). Through the API the Donchian
+breakout over 2024 gives identical results on both engines (58 trades, +1,518.98 USDC; 0.33 s vs 17.2 s).

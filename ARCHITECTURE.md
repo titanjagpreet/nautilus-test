@@ -34,11 +34,11 @@
 | `strategy_lab/data` | sources (`sources/`), normalisation + validation (`validate.py`), Parquet storage + DuckDB (`storage.py`), resampling (`resample.py`), the `make data` pipeline (`pipeline.py`) |
 | `strategy_lab/spec` | spec schema v0.1, indicator catalogue, validator, renderer, parameters, bar-by-bar evaluator, shared position-management decisions, catalogue JSON |
 | `strategy_lab/engines/nautilus` | instruments, venue, fill model, funding module, hand-written Phase 2 strategy, generic `SpecStrategy`, execution feed, runners, reports, analyzer patch |
-| `strategy_lab/engines/fast` | Numba engine (Phase 4) |
-| `strategy_lab/engines/inputs.py`, `results.py` | what both engines read (tick-rounded bars, funding) and write (`BacktestResult`) |
-| `strategy_lab/lab` | robustness lab (Phase 6) |
-| `strategy_lab/ai` | LLM layer and eval (Phase 5) |
-| `strategy_lab/api`, `strategy_lab/ui` | FastAPI app and web UI (Phase 7) |
+| `strategy_lab/engines/fast` | Numba engine: indicator ports (`indicators.py`), rule compiler (`compile.py`), the jitted 1-minute loop (`simulate.py`), runner with reusable preparation (`runner.py`) |
+| `strategy_lab/engines/contracts.py`, `inputs.py`, `results.py` | engine-neutral contract specs, what both engines read (tick-rounded bars, funding) and write (`BacktestResult`) |
+| `strategy_lab/lab` | metrics, sweeps, windowed evaluation, optimisers, out-of-sample / walk-forward / heat-map / Monte Carlo, robustness score |
+| `strategy_lab/ai` | provider layer, transport schema, prompts, builder (repair + escalation), spend ledger, judge, eval |
+| `strategy_lab/api`, `strategy_lab/ui` | FastAPI app (JSON API + HTML pages), SQLite store, background job workers; templates, CSS, chart code |
 
 ## Execution semantics (identical in both engines)
 
@@ -92,3 +92,43 @@ liquidation (margin is only checked for sizing), order rejections other than tho
 Both engines return `engines/results.BacktestResult`: trades (minute-stamped fills, fees, funding, PnL), the
 funding ledger and an equity curve computed by one shared function. Results stored by the API carry the spec,
 data source and range, and the engine name and version, so any result can be re-run.
+
+## The AI builder (`strategy_lab/ai`)
+
+```
+idea / spec + change / Pine Script
+        │  user message (task + data fenced in <<< >>>)
+        ▼
+static system prompt (~5K tokens, generated from the catalogue, identical for every request)
++ one reply schema (transport form of the spec in an envelope) ──► provider.complete_json
+        │                                     (structured-output ladder; usage → cost → ledger;
+        │                                      budget checked before sending)
+        ▼
+JSON → envelope → transport→canonical → Pydantic → validator (with the market's data context)
+        │ errors? ──► repair turn quoting every error (×2) ──► one escalation to a stronger model
+        ▼            ──► clean failure listing the errors
+validated StrategySpec (or questions / explanation / refusal)
+```
+
+The model never produces code and nothing it writes is executed: a spec is data, interpreted by the two
+engines. The validator — not the model — is what guarantees that every returned spec has a stop, leverage
+≤ 10x and no look-ahead.
+
+## The lab (`strategy_lab/lab`)
+
+All lab runs use the fast engine (parity with NautilusTrader is tested). A window is evaluated with indicator
+warm-up on the data before it (`trade_from`), so out-of-sample windows are not shortened by warm-up; prepared
+arrays and indicator values are cached per window across parameter combinations. `run_lab` = baseline →
+heat-map (grid) → 70/30 out-of-sample → 6m/2m walk-forward → optional Optuna → Monte Carlo → score + warnings.
+
+## API, UI and jobs (`strategy_lab/api`, `strategy_lab/ui`)
+
+* The web process (FastAPI) serves the JSON API and the Jinja2/HTMX pages and calls the LLM providers.
+* Backtests and lab runs are **jobs**: a row in SQLite, executed by a pool of two spawned worker processes
+  (NautilusTrader's runtime and ~1 GB per run stay out of the web process). Workers write stage and progress;
+  the browser polls a fragment once a second. Jobs left running by a dead server are marked failed at start-up.
+* One SQLite file (`data/strategy_lab.sqlite`, override with `STRATEGY_LAB_DB`) holds specs, jobs, backtests,
+  lab reports and the LLM spend ledger.
+* Charts: Lightweight Charts (equity, candles with trade markers) and Plotly (heat-map, Monte Carlo
+  histogram), pinned on jsDelivr; `make setup` vendors SHA-512-verified copies from the npm registry, which the
+  pages prefer when present.

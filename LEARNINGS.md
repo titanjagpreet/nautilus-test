@@ -274,3 +274,41 @@ Pydantic + the validator, whose exact errors drive the repair loop. Two conseque
 Fallback ladder: if an API rejects a structured-output mode with HTTP 400 (e.g. "schema too complex"), the
 provider drops to the next mode (strict tools → JSON mode with the schema and examples in the prompt, which
 DeepSeek requires to contain the word "json") and remembers it.
+
+## 16. A second engine that matches NautilusTrader exactly
+
+What it took for the Numba engine to give *identical* trades (`tests/test_parity.py`, REPORT §3):
+
+* **Bit-identical indicators.** "Same formula" is not enough at crossing points: a moving-average cross decided
+  by 1e-12 flips a trade. NumPy's `mean` uses pairwise summation, Nautilus's SMA keeps a running sum, and EMA
+  seeding differs between libraries; each was ported in the exact operation order (`engines/fast/indicators.py`,
+  `_pairwise_sum`), and every indicator is tested for exact equality against Nautilus on real data.
+* **One shared definition of "a decision".** Position rules (exits before entries, time exit, reversal only
+  without cooldown, daily cap by the signal's UTC date, trailing update after the next open's gap check) live
+  in one module (`spec/decisions.py`) used by Nautilus's strategy and mirrored by the jitted loop.
+* **Copy the reference's quirks deliberately.** Nautilus rejects a stop modified into the market and books
+  `Money` rounded to the currency precision; the fast engine does the same, documented, instead of being
+  "more correct".
+* **Price canonicalisation.** Prices go through `round_price(..., decimals)` in both engines (§13).
+* **Process memory, not CPU, limits parallel sweeps.** A spawned worker that (indirectly) imported Nautilus cost
+  ~870 MB; after moving contract specs and shared helpers to engine-neutral modules and importing Nautilus lazily,
+  a fast-engine worker costs ~480–550 MB (mostly Numba/LLVM and the data).
+* **Numba's on-disk cache** (`cache=True`) makes a cold process start in ~0.3 s instead of several seconds of JIT
+  compilation.
+
+## 17. The lab and the UI
+
+* **Out-of-sample windows need warm-up from *earlier* data.** With warm-up inside the window, a 2-month
+  walk-forward window loses weeks to a 200-bar EMA on 4-hour bars. The fast engine got `trade_from`: indicators
+  run on the preceding data, entries start at the window. Warming up on the past is not look-ahead; a real-data
+  test shows the window run reproduces the full run's trades exactly.
+* **Grid edges and spikes matter more than the best value.** The heat-map score is the best cell's neighbours
+  relative to it; an optimum on the edge of the grid gets its own warning. For the EMA crossover, the best cell
+  sat in the grid corner and the walk-forward optimum moved by 40–50% between windows.
+* **Keep NautilusTrader out of the web process.** Backtest and lab jobs run in spawned worker processes that
+  write progress to SQLite; the browser polls. A crash marks the job failed instead of leaving it "running".
+* **`anthropic` 1.x and `openai` 3.x are built on `httpx2`,** not `httpx`: test transports and custom clients
+  must come from `httpx2` (the type checker caught a mismatch).
+* **Pinned CDN plus a verified local copy.** jsDelivr is blocked in the build sandbox but the npm registry is
+  not: `scripts/vendor_assets.py` downloads the same pinned versions from the registry, checks the SHA-512
+  integrity value, and the pages prefer the local copy.

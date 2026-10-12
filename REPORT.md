@@ -1,17 +1,83 @@
-# REPORT
+# REPORT — Strategy Lab Prototype
 
-<!-- BENCH:BEGIN -->
-| scenario | engine | cores | wall time | peak RSS | per backtest |
+Real data, real runs, measured on this build machine (4 vCPU, 15.7 GB RAM, Python 3.13, NautilusTrader 1.231.0).
+Every table between `<!-- … -->` markers is written by a script (`make bench`, `make parity`, `make eval`) and
+can be regenerated. Synthetic data appears only in unit tests and is labelled there.
+
+## Verdict for Mirrorlane: use NautilusTrader as the reference, not as the core
+
+**Recommendation: build Mirrorlane's backtesting and robustness lab on a purpose-built vectorised/JIT engine
+(like this project's Numba engine), and keep NautilusTrader as the reference implementation that a parity suite
+runs against on every change.** Do not put NautilusTrader in the interactive path.
+
+Why, from what was measured here:
+
+1. **Correct and rigorous, but its native bar semantics are not what a strategy builder needs.** Out of the box a
+   market order sent at a bar close fills at *that bar's close*, neither bar ordering is "stop first", the
+   slippage model also slips limit orders, a stop already through the market is *rejected* (leaving the position
+   unprotected) unless reconfigured, and **funding is not simulated at all** (LEARNINGS §2–§6). Getting the
+   semantics a trader expects took a latency model, synthetic "open" bars, a direction-aware intrabar path fed
+   from a generator, a custom fill model and a funding `SimulationModule` (§7). It works — parity is exact — but
+   it is a lot of machinery around the engine rather than inside it.
+2. **Too slow and too heavy for interactive use and sweeps.** One year of 1-minute execution for a 1-hour
+   strategy: **5.9 s per run in NautilusTrader (11.6 s for the first run in a fresh process) vs 0.03–0.10 s in
+   the Numba engine** — 60 to 175 times slower. A 144-run parameter sweep: **853 s vs 4.9 s** on one core. An
+   empty engine costs 370 MB and a run 0.7–1.3 GB, so parallel runs need one process each (4 cores: 3.3 GB for
+   the 144-run sweep). The lab's ~1,400-backtest robustness report takes ~40 s on the fast engine; at 5.9 s per
+   run it would take over two hours in NautilusTrader.
+3. **Fragile at scale without patches.** Its `PortfolioAnalyzer` is quadratic in the number of trades: a 1-minute
+   strategy over a year took 575 s stock and 127 s with our tested patch (§10).
+4. **But it is an excellent reference.** It is an independent, event-driven implementation with a real matching
+   engine, margin accounting and order lifecycle. Holding the fast engine to *exact* trade-for-trade parity
+   against it caught real modelling questions (fixed-point price conversion, stop-modify rejection, funding
+   rounding — §13, §14) that a single engine would have hidden.
+
+What Mirrorlane gets from this split: sub-second backtests and minute-scale robustness reports for users; a
+parity suite (`tests/test_parity.py`, `make parity`) that pins the semantics; NautilusTrader available for
+"confirm this exact run in the reference engine" and as a foundation if event-driven paper trading is ever
+wanted (out of scope here: **no live trading**).
+
+## 1. Data
+
+Full details in DATA.md. The build sandbox blocks the primary sources (Binance data portal, Lighter API,
+Dukascopy), so documented GitHub republications were used and cross-checked:
+
+| market | bars used | period | funding |
+|---|---|---|---|
+| BTC-PERP | Binance spot BTCUSDT 1m (GitHub mirror; Bitstamp BTCUSD as fallback and cross-check) | 2017-08-17 → 2026-09-30, 4.79 M bars | Binance USD-M BTCUSDT, 8-hourly, 2019-09-10 → 2026-06-30 (verified against a second source) |
+| XAU-PERP | HistData spot XAUUSD 1m (clock = UTC−5 with EU DST, detected by scoring) | 2021-01-03 → 2026-05-29, 1.87 M bars | none (no free history); no volume |
+
+**Caveat:** these are proxies for Lighter's own perpetuals (spot BTC prices with Binance perp funding; spot
+gold). Absolute P&L will differ on Lighter data; the engines, the lab and the comparison do not depend on it.
+
+## 2. NautilusTrader 1.231 — measured
+
+Hand-written EMA(12/48) + ATR bracket strategy, real BTC data (LEARNINGS §12):
+
+| scenario | data points | positions | stock | patched analyzer | peak RSS |
 |---|---|---|---|---|---|
-| single | fast (cold (incl. JIT compile)) | 1 | 0.3 s | 482 MB | 0.290 s |
-| single | fast (warm) | 1 | 0.1 s | 483 MB | 0.100 s |
-| sweep 144 | fast | 1 core | 4.9 s | 491 MB | 0.034 s |
-| sweep 144 | fast | 4 cores | 3.9 s | 2,224 MB | 0.027 s |
-| sweep 1600 | fast | 1 core | 48.5 s | 425 MB | 0.030 s |
-| sweep 1600 | fast | 4 cores | 15.2 s | 2,278 MB | 0.009 s |
+| empty engine (import + venue + instrument) | 0 | 0 | 0.9 s | – | 370 MB |
+| 1 year of 1m bars, strategy on 1m | 525,600 | 14,038 | 575 s | 127 s | 1.3 GB |
+| 5 years of 15m bars, strategy on 15m | 175,265 | 4,634 | 68 s | 30 s | 1.05 GB |
+| 2 years, 15m strategy on 1m execution | 1,121,280 | 1,760 | 50 s | 41 s | 1.1 GB |
 
-Machine: 4 vCPU, 15.7 GB RAM; workload: EMA crossover, BTC-PERP 1h on 1m execution, 2024-01-01 → 2025-01-01.
-<!-- BENCH:END -->
+**Good at:** realistic order lifecycle and matching (stops, limits, brackets, reduce-only), margin accounting,
+deterministic event ordering, clean extension points (`SimulationModule`, `FillModel`, `LatencyModel`, data
+iterators), Parquet catalog, rich built-in indicators — and the installed wheel ships its Cython sources, so
+behaviour can be verified line by line.
+
+**Bad at (for this use):** bar-execution defaults (same-bar-close fills, no stop-first ordering), slippage only
+0 or 1 tick and applied to limits too, no funding, indicator defaults that differ from textbook definitions (RSI
+0–1 with EMA smoothing, ATR simple, WMA unweighted, Bollinger on typical price, OBV vs open — §8), a quadratic
+analyzer, ~1 GB per run, ~4k bars/s when a Python strategy trades often, and per-run setup cost that makes sweeps
+impractical. The docs site is blocked from the sandbox; the 2.0 line is in release candidates (not used).
+
+## 3. Fast engine vs NautilusTrader
+
+### Parity — 10 catalogue strategies × 2 fee profiles, BTC/XAU 2024 (`make parity`)
+
+Requirement: same trades, same timestamps, net P&L within 0.5%. Result: **identical trades in all 20 runs**;
+the largest relative P&L difference is 1.3e-10 (float64 vs fixed-point accumulation, < 1e-7 USDC).
 
 <!-- PARITY:BEGIN -->
 | strategy | fees | trades (N / fast) | identical entries, exits, reasons | net P&L Nautilus | net P&L fast | rel. diff P&L / fees / funding | time Nautilus / fast |
@@ -37,3 +103,70 @@ Machine: 4 vCPU, 15.7 GB RAM; workload: EMA crossover, BTC-PERP 1h on 1m executi
 | Gold session breakout (XAU) | standard | 213 / 213 | yes | 39.00 | 39.00 | 0e+00 / 0e+00 / 0e+00 | 6.5 s / 0.08 s |
 | Gold session breakout (XAU) | premium | 213 / 213 | yes | -161.74 | -161.74 | 0e+00 / 0e+00 / 0e+00 | 6.1 s / 0.09 s |
 <!-- PARITY:END -->
+
+### Speed and memory (`make bench`)
+
+Workload: the EMA crossover (1-hour signals, 1-minute execution) over 2024 on BTC; sweeps over the two EMA
+periods (12×12 and 40×40). Peak memory = the whole process tree. A "single" run is a first run in a fresh
+process (NautilusTrader's import and first-run setup included; the fast engine's "cold" row includes loading
+its compiled code from Numba's on-disk cache); sweep rows show the steady-state cost per run.
+
+<!-- BENCH:BEGIN -->
+| scenario | engine | cores | wall time | peak RSS | per backtest |
+|---|---|---|---|---|---|
+| single | fast (cold (incl. JIT compile)) | 1 | 0.3 s | 482 MB | 0.290 s |
+| single | fast (warm) | 1 | 0.1 s | 483 MB | 0.100 s |
+| sweep 144 | fast | 1 core | 4.9 s | 491 MB | 0.034 s |
+| sweep 144 | fast | 4 cores | 3.9 s | 2,224 MB | 0.027 s |
+| sweep 1600 | fast | 1 core | 48.5 s | 425 MB | 0.030 s |
+| sweep 1600 | fast | 4 cores | 15.2 s | 2,278 MB | 0.009 s |
+| single | nautilus | 1 | 11.6 s | 677 MB | 11.550 s |
+| sweep 144 | nautilus | 1 core | 853.4 s | 679 MB | 5.926 s |
+| sweep 144 | nautilus | 4 cores | 218.6 s | 3,297 MB | 1.518 s |
+
+Machine: 4 vCPU, 15.7 GB RAM; workload: EMA crossover, BTC-PERP 1h on 1m execution, 2024-01-01 → 2025-01-01.
+<!-- BENCH:END -->
+
+## 4. Robustness lab — real runs
+
+BTC 2023-07-01 → 2026-07-01, 9×9 grids, fast engine (`python -m strategy_lab.lab …`, ~1,400 backtests in
+37–51 s each):
+
+| strategy | score | OOS Sharpe (in → out) | walk-forward windows profitable | Monte Carlo P(loss) | return vs buy & hold |
+|---|---|---|---|---|---|
+| Donchian breakout | 65 | 1.08 → 0.49 | 60% of 15 | 10% | +18.3% vs +92.4% |
+| Keltner pullback | 43 | 1.22 → −0.02 | 40% of 15 | 39% | +2.8% vs +92.4% |
+| EMA crossover | 30 | 0.95 → −0.50 | 47% of 15 | 89% | −9.0% vs +92.4% |
+
+The score's six parts and all warnings are shown with each report (UI and JSON). The lab behaves as intended:
+in-sample Sharpe ratios near 1 collapse out of sample for two of the three templates, the walk-forward best
+parameters drift between windows, and none of the three beats holding BTC over the period.
+
+## 5. AI strategy builder
+
+Design (ARCHITECTURE.md, LEARNINGS §15): one static system prompt and one reply schema for every task (so
+every provider's prompt cache can hit), the best structured-output mode each API offers with automatic
+fallback, then Pydantic + the spec validator, up to 2 repairs quoting the exact errors, one escalation, a
+clean failure. Spend is logged from the APIs' usage fields and checked against the limits ($3 project, $1 eval)
+before every call.
+
+### Eval (`make eval`) — 40 prompts + 5 adversarial
+
+<!-- AI_EVAL:BEGIN -->
+**Not run yet: no LLM API key is available in this environment.** `make eval` runs it on every provider with
+a key in `.env` and writes the table here (first-try validity, validity after repair, intent match by objective
+checks and by an LLM judge, adversarial safety, cost per request and per 1,000, p50/p95 latency).
+<!-- AI_EVAL:END -->
+
+### Where the data goes
+
+* **DeepSeek** (default writer in the brief): per its privacy policy, data is processed and stored in the
+  People's Republic of China (Hangzhou DeepSeek AI). Cheapest by far, with half-price off-peak hours
+  (16:00–01:00 and 04:00–06:00 UTC on weekdays, all weekend).
+* **Kimi / Moonshot**: the API platform is operated by MOONSHOT AI PTE. LTD. in Singapore (parent company in
+  Beijing).
+* **Claude** (optional): Anthropic, United States.
+
+For Mirrorlane, strategy ideas are users' trading intent and arguably their IP. Sending them to PRC-hosted
+APIs may be unacceptable for some users or jurisdictions; the provider should be a user-visible setting, and
+nothing else (account data, keys, positions) should ever be in a prompt — here nothing is.

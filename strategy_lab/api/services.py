@@ -67,11 +67,13 @@ def coverage() -> dict[str, Any]:
 
 
 def default_range(market: str) -> tuple[str, str]:
-    """A sensible backtest window: the last three years of the market's primary source (whole months)."""
-    bars = coverage().get("markets", {}).get(market, {}).get("bars", [])
+    """A sensible backtest window: the last three whole years of the market's primary source, ending where its
+    funding history ends too (so every month carries funding costs)."""
+    info = coverage().get("markets", {}).get(market, {})
+    bars, funding = info.get("bars", []), info.get("funding", [])
     if not bars:
         return "2024-01-01", "2025-01-01"
-    last = dt.date.fromisoformat(bars[0]["last"][:10])
+    last = min(dt.date.fromisoformat(src[0]["last"][:10]) for src in (bars, funding) if src)
     end = dt.date(last.year, last.month, 1)
     first = dt.date.fromisoformat(bars[0]["first"][:10])
     start = max(dt.date(end.year - 3, end.month, 1), dt.date(first.year, first.month, 1))
