@@ -209,7 +209,10 @@ def test_summary_and_report_table() -> None:
         {"anthropic (claude-haiku-5-5)": s},
         {"started": "t0", "finished": "t1", "judge": None, "eval_spend": 0.0, "skipped": ""},
     )
-    assert "| anthropic (claude-haiku-5-5) | 3 | 50% | 50% | 1 / 0 | 25% / 100% (1 judged) | 100% / 100% | 0 |" in table
+    assert (
+        "| anthropic (claude-haiku-5-5) | 3 | 50% | 50% | 1 / 0 | 25% / 100% (1 judged) | 100% / 100% | 0 |"
+        in table
+    )
 
 
 def test_judge_maps_shuffled_labels_back(ledger: Ledger) -> None:
