@@ -157,9 +157,11 @@ before every call.
 ### Eval (`make eval`) — 40 prompts + 5 adversarial
 
 <!-- AI_EVAL:BEGIN -->
-**Not run yet: no LLM API key is available in this environment.** `make eval` runs it on every provider with
-a key in `.env` and writes the table here (first-try validity, validity after repair, intent match by objective
-checks and by an LLM judge, adversarial safety, cost per request and per 1,000, p50/p95 latency).
+| provider (writer → escalation) | items | first-try valid | valid after repair | repairs / escalations | intent: checks / judge | adversarial safe: model / system | questions on clear prompts | cost / request | per 1,000 | latency p50 / p95 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| deepseek (deepseek-flash → deepseek-v4-pro) | 45 | 88% | 100% | 9 / 0 | 100% / 91% (39 judged) | 60% / 100% | 0 | $0.00063 | $0.63 | 3.9 s / 8.8 s |
+
+Run 2026-10-12T14:46:51+00:00 → 2026-10-12T14:51:31+00:00 UTC; judge: deepseek:deepseek-v4-pro; eval spend $0.0474 (judge included); skipped: moonshot (no MOONSHOT_API_KEY), anthropic (no ANTHROPIC_API_KEY).
 <!-- AI_EVAL:END -->
 
 ### Where the data goes
