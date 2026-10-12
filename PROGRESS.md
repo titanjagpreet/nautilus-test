@@ -249,6 +249,8 @@ types, JSON report), CLI `python -m strategy_lab.lab`.
 | Donchian breakout | 65 | 1.08 → 0.49 | 60% of 15 | 10% | +18.3% vs +92.4% |
 | Keltner pullback | 43 | 1.22 → −0.02 | 40% of 15 | 39% | +2.8% vs +92.4% |
 | EMA crossover | 30 | 0.95 → −0.50 | 47% of 15 | 89% | −9.0% vs +92.4% |
+| Funding-rate fade (BTC, 2023-06 → 2026-06) | 40 | 1.68 → 0.00 | 20% of 15 | 7% | +5.1% vs +170.8% (22 trades) |
+| Gold session breakout (XAU, 2023-05 → 2026-05) | 18 | 0.36 → −2.32 | 33% of 15 | 77% | −1.1% vs +132.9% |
 
 The lab does what it is for: tuned in-sample Sharpe ratios near 1 collapse out of sample for two of three
 templates, and none beats holding BTC over the period.

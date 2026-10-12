@@ -35,12 +35,11 @@ def axis_values(param: TunableParam, n: int = 9, spread: float = 0.5) -> list[fl
 
 
 def default_axes(spec: Any, names: Sequence[str] | None = None, n: int = 9) -> dict[str, list[float]]:
-    """Grid axes for the named parameters (default: the first two indicator parameters, else the first two)."""
+    """Grid axes for the named parameters (default: the first two tunable parameters — indicator parameters
+    come first, then risk values, then rule constants — the same choice the UI preselects)."""
     params = {p.name: p for p in tunable_parameters(spec)}
-    if names is None:
-        indicator_params = [p.name for p in params.values() if p.path[0] == "indicators"]
-        names = (indicator_params or list(params))[:2]
-    unknown = [n_ for n_ in names if n_ not in params]
+    names = list(names) if names is not None else list(params)[:2]
+    unknown = [name for name in names if name not in params]
     if unknown:
         raise KeyError(f"unknown parameter(s) {unknown}; available: {sorted(params)}")
     return {name: axis_values(params[name], n) for name in names}

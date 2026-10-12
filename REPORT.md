@@ -137,10 +137,14 @@ BTC 2023-07-01 → 2026-07-01, 9×9 grids, fast engine (`python -m strategy_lab.
 | Donchian breakout | 65 | 1.08 → 0.49 | 60% of 15 | 10% | +18.3% vs +92.4% |
 | Keltner pullback | 43 | 1.22 → −0.02 | 40% of 15 | 39% | +2.8% vs +92.4% |
 | EMA crossover | 30 | 0.95 → −0.50 | 47% of 15 | 89% | −9.0% vs +92.4% |
+| Funding-rate fade (BTC, 2023-06 → 2026-06) | 40 | 1.68 → 0.00 | 20% of 15 | 7% | +5.1% vs +170.8% (22 trades) |
+| Gold session breakout (XAU, 2023-05 → 2026-05) | 18 | 0.36 → −2.32 | 33% of 15 | 77% | −1.1% vs +132.9% |
 
 The score's six parts and all warnings are shown with each report (UI and JSON). The lab behaves as intended:
 in-sample Sharpe ratios near 1 collapse out of sample for two of the three templates, the walk-forward best
-parameters drift between windows, and none of the three beats holding BTC over the period.
+parameters drift between windows, and none beats buy & hold over its period. The funding fade's 22 trades
+are flagged as too few to judge; the gold breakout's 9 tunable parameters and spiky heat-map are flagged as
+overfitting risks.
 
 ## 5. AI strategy builder
 
