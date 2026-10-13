@@ -18,7 +18,9 @@
       layout: { background: { color: "transparent" }, textColor: COLORS.muted },
       grid: { vertLines: { color: COLORS.grid }, horzLines: { color: COLORS.grid } },
       rightPriceScale: { borderColor: COLORS.grid },
-      timeScale: { borderColor: COLORS.grid, timeVisible: true },
+      // fitContent() must show the whole run: by default a point needs >= 0.5 px, so a long backtest (e.g. 8 years
+      // of 4h equity) was cut to its most recent years; and keep the fitted range when autoSize resizes the chart.
+      timeScale: { borderColor: COLORS.grid, timeVisible: true, minBarSpacing: 0.001, lockVisibleTimeRangeOnResize: true },
       crosshair: { mode: 0 },
     });
     return c;
