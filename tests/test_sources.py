@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import datetime as dt
 import gzip
+import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 import pandas as pd
@@ -11,8 +13,9 @@ import pytest
 
 from strategy_lab.api import services
 from strategy_lab.data import storage
-from strategy_lab.data.sources import binance, lighter
+from strategy_lab.data.sources import binance, dukascopy, lighter
 from strategy_lab.data.sources import github_datasets as gh
+from strategy_lab.data.sources.http import SourceUnavailableError
 from strategy_lab.data.validate import find_gaps
 from strategy_lab.engines import inputs
 
@@ -243,3 +246,59 @@ def test_default_window_takes_three_funded_years_from_the_preferred_source_that_
         "three years beat full funding"
     )
     assert services.default_window([], []) is None
+
+
+# --- an interrupted `make data` resumes cleanly ------------------------------------------------------------
+
+
+def test_a_dataset_is_swapped_in_whole(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """SYNTHETIC rows. A rewrite never leaves half a dataset; leftovers of an interrupted one stay invisible."""
+    monkeypatch.setenv("STRATEGY_LAB_DATA_DIR", str(tmp_path))
+    price = {"open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 0.0}
+    storage.write_bars(_series("binance_futures", "BTCUSDT", "2024-06-01", "2025-06-01", "1D", **price))
+    leftover = tmp_path / "bars" / ".staging" / "source=binance_futures" / "symbol=BTCUSDT" / "year=2019"
+    leftover.mkdir(parents=True)  # what an interrupted write leaves behind
+    (leftover / "part-0.parquet").write_bytes(b"truncated")
+    storage.write_bars(_series("binance_futures", "BTCUSDT", "2025-01-01", "2025-03-01", "1D", **price))
+    assert storage.list_datasets() == [("binance_futures", "BTCUSDT")]
+    assert storage.time_ranges() == {("binance_futures", "BTCUSDT"): (ts("2025-01-01"), ts("2025-03-01"))}
+    assert not (tmp_path / "bars" / ".staging" / "source=binance_futures" / "symbol=BTCUSDT").exists()
+
+
+def test_a_corrupt_cached_lighter_page_is_fetched_again(tmp_path: Path) -> None:
+    good, bad = tmp_path / "good.json", tmp_path / "bad.json"
+    good.write_text('{"candlesticks": []}', encoding="utf-8")
+    bad.write_text('{"candlesticks": [{"t": 1', encoding="utf-8")  # cut off mid-write
+    assert lighter._cached(good) == {"candlesticks": []}
+    assert lighter._cached(bad) is None
+    assert lighter._cached(tmp_path / "missing.json") is None
+
+
+def test_dukascopy_keeps_only_files_the_cli_finished(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("STRATEGY_LAB_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(dukascopy.shutil, "which", lambda name: "C:/nodejs/npx.cmd")
+    calls: list[list[str]] = []
+
+    def cli(ok: bool) -> Callable[..., subprocess.CompletedProcess[str]]:
+        def run(cmd: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+            calls.append(cmd)
+            out = Path(cmd[cmd.index("-dir") + 1]) / (cmd[cmd.index("-fn") + 1] + ".csv")
+            out.write_text("timestamp,open\n1,2\n" if ok else "timestamp,op", encoding="utf-8")
+            return subprocess.CompletedProcess(cmd, 0 if ok else 1, "", "" if ok else "network error")
+
+        return run
+
+    start, end = ts("2020-01-01"), ts("2021-01-01")
+    monkeypatch.setattr(dukascopy.subprocess, "run", cli(ok=False))
+    with pytest.raises(SourceUnavailableError, match="network error"):
+        dukascopy._run_cli("bid", start, end, "xauusd-m1-bid-2020")
+    folder = tmp_path / "raw" / "dukascopy"
+    assert not (folder / "xauusd-m1-bid-2020.csv").exists(), "a failed or interrupted run leaves no final file"
+    monkeypatch.setattr(dukascopy.subprocess, "run", cli(ok=True))
+    path = dukascopy._run_cli("bid", start, end, "xauusd-m1-bid-2020")
+    assert path == folder / "xauusd-m1-bid-2020.csv"
+    assert path.read_text(encoding="utf-8") == "timestamp,open\n1,2\n"
+    assert sorted(p.name for p in folder.iterdir()) == ["xauusd-m1-bid-2020.csv"]
+    assert calls[-1][0] == "C:/nodejs/npx.cmd", "npx is launched by its full path (npx.cmd on Windows)"
+    assert dukascopy._run_cli("bid", start, end, "xauusd-m1-bid-2020") == path
+    assert len(calls) == 2, "a finished file is reused, not downloaded again"

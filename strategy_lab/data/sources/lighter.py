@@ -160,9 +160,8 @@ def _paged(
         while window_end > floor_ms:
             window_start = max(window_end - step_ms, floor_ms)
             page_path = cache / f"{window_start}_{window_end}.json"
-            if page_path.exists():
-                page = json.loads(page_path.read_text(encoding="utf-8"))
-            else:
+            page = _cached(page_path)
+            if page is None:
                 throttle.wait()
                 params = {
                     "market_id": market_id,
@@ -172,10 +171,21 @@ def _paged(
                     "count_back": 0,
                 }
                 page = request_with_retries(http, f"{BASE_URL}/api/v1/{endpoint}", params).json()
-                page_path.write_text(json.dumps(page), encoding="utf-8")
+                tmp = page_path.with_suffix(".part")
+                tmp.write_text(json.dumps(page), encoding="utf-8")
+                tmp.replace(page_path)  # atomic: an interrupted run never leaves a truncated page
             pages.append(page)
             window_end = window_start
     return [p for p in pages if p.get(key)]
+
+
+def _cached(path: Path) -> dict[str, Any] | None:
+    """A cached raw page, or ``None`` when it is missing or unreadable (then it is fetched again)."""
+    try:
+        page = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+    return page if isinstance(page, dict) else None
 
 
 def fetch_candles(spec: MarketSpec, end: pd.Timestamp) -> pd.DataFrame:

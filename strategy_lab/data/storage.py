@@ -26,19 +26,27 @@ def _partition_dir(root: Path, source: str, symbol: str) -> Path:
 
 
 def _write_partitioned(df: pd.DataFrame, root: Path, source: str, symbol: str) -> list[Path]:
-    """Replace every year partition of (source, symbol) with ``df``; returns written files."""
+    """Replace every year partition of (source, symbol) with ``df``; returns written files.
+
+    The new partitions are written under ``root/.staging`` and swapped in at the end, so an interrupted run
+    leaves the previous dataset (or none), never half of one. Readers only see ``source=*`` folders."""
     target = _partition_dir(root, source, symbol)
-    if target.exists():
-        shutil.rmtree(target)
-    written: list[Path] = []
+    staging = _partition_dir(root / ".staging", source, symbol)
+    if staging.exists():
+        shutil.rmtree(staging)
     body = df.drop(columns=["source", "symbol"]).sort_values("ts")
+    years: list[int] = []
     for year, part in body.groupby(body["ts"].dt.year, sort=True):
-        path = target / f"year={year}" / "part-0.parquet"
+        path = staging / f"year={year}" / "part-0.parquet"
         path.parent.mkdir(parents=True, exist_ok=True)
         table = pa.Table.from_pandas(part.reset_index(drop=True), preserve_index=False)
         pq.write_table(table, path, compression="zstd")
-        written.append(path)
-    return written
+        years.append(int(year))
+    if target.exists():
+        shutil.rmtree(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    staging.rename(target)
+    return [target / f"year={year}" / "part-0.parquet" for year in years]
 
 
 def write_bars(df: pd.DataFrame, root: Path | None = None) -> list[Path]:

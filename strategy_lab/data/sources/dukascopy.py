@@ -42,18 +42,21 @@ def _run_cli(side: str, start: pd.Timestamp, end: pd.Timestamp, name: str) -> Pa
     target = out_dir / f"{name}.csv"
     if target.exists() and target.stat().st_size > 0:
         return target
+    partial = out_dir / f"{name}.part.csv"  # renamed only after the CLI succeeds: an interrupted file is redone
+    partial.unlink(missing_ok=True)
     cmd = [
         npx, "--yes", PACKAGE,
         "-i", "xauusd", "-from", f"{start:%Y-%m-%d}", "-to", f"{end:%Y-%m-%d}",
         "-t", "m1", "-p", side, "-f", "csv", "-v", "-vu", "units",
-        "-dir", str(out_dir), "-fn", name, "-r", "3", "-bs", "10", "-bp", "1000",
+        "-dir", str(out_dir), "-fn", f"{name}.part", "-r", "3", "-bs", "10", "-bp", "1000",
     ]
     proc = subprocess.run(
         cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3600, check=False
     )
-    if proc.returncode != 0 or not target.exists():
+    if proc.returncode != 0 or not partial.exists():
         tail = (proc.stderr or proc.stdout)[-400:]
         raise SourceUnavailableError(f"dukascopy-node failed for {name}: {tail}")
+    partial.replace(target)
     return target
 
 
