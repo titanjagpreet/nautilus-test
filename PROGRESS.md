@@ -303,7 +303,7 @@ breakout over 2024 gives identical results on both engines (58 trades, +1,518.98
 
 ## Phase 8 — quality, demo, report (2026-10-12)
 
-**Checks:** `make lint` clean (ruff + mypy, strict on spec, engines, lab and AI); **236 tests pass**, including
+**Checks:** `make lint` clean (ruff + mypy, strict on spec, engines, lab and AI); **259 tests pass**, including
 the replay of the recorded DeepSeek replies. From a **clean clone** (before the eval):
 `make setup` → `make lint` → `make demo` (44 s) → `make test` (225 passed, the replay skipped) — with `STRATEGY_LAB_DATA_DIR`
 pointing at the already downloaded history instead of re-running `make data`, which was verified in Phase 1.
@@ -346,6 +346,14 @@ and since the coverage rule (above) that reached before Binance's first bar, so 
 Bitstamp (on an open network it would also have kept the lab off Lighter for recent windows). `load_market`
 now chooses datasets by the window alone and loads warm-up from the same datasets (`history_from`). REPORT's
 lab numbers predate the coverage rule and were not affected.
+
+**Found from the user's screenshot:** an 8-year equity chart started in late 2020 — Lightweight Charts keeps
+≥ 0.5 px per point, so `fitContent()` dropped the oldest points; charts now allow any spacing and keep the
+fitted range on resize (reproduced and verified in headless Chromium).
+
+**Hand-off:** `docs/MIRRORLANE_HANDOFF.md` — everything built, every bug with its root cause, the execution
+contract, and a step-by-step plan with acceptance criteria for implementing it in Mirrorlane; the best strategy
+found (80/100 in the lab) is `docs/strategies/trend_filtered_breakout.json`.
 
 **Benchmark complete:** NautilusTrader's 1,600-run sweep took 10,327 s on 1 core and 2,522 s on 4 (3.4 GB
 peak), vs 48.5 s / 15.2 s for the fast engine; the REPORT verdict quotes them. The fast engine's "cold" row

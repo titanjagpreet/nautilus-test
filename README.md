@@ -15,6 +15,7 @@ The only secrets are optional LLM API keys.
 | [ARCHITECTURE.md](ARCHITECTURE.md) | packages, execution semantics shared by both engines, AI / lab / API design |
 | [DATA.md](DATA.md) | sources, fallbacks, time zones, validation and known gaps of the history |
 | [PROGRESS.md](PROGRESS.md) | phase log and definition-of-done checklist |
+| [docs/MIRRORLANE_HANDOFF.md](docs/MIRRORLANE_HANDOFF.md) | everything built and learned, every bug with its root cause, and the plan for implementing it in Mirrorlane |
 
 ## Setup
 

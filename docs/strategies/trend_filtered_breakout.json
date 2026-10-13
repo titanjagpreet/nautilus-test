@@ -1,0 +1,137 @@
+{
+  "spec_version": "0.1",
+  "meta": {
+    "name": "Trend-filtered 4h breakout",
+    "description": "Turtle-style breakout on BTC 4-hour bars, traded only in the direction of the 100-day SMA of completed daily bars: long when the close crosses above the previous bar's 20-bar high while above the daily SMA, short when it crosses below the previous bar's 20-bar low while below it; exit on the opposite 10-bar channel, a 2 ATR(20) initial stop and a 3 ATR(20) trailing stop.",
+    "author": "template",
+    "tags": [
+      "breakout",
+      "trend"
+    ]
+  },
+  "market": {
+    "symbol": "BTC-PERP",
+    "timeframe": "4h",
+    "direction": "both"
+  },
+  "indicators": [
+    {
+      "id": "dc20",
+      "type": "donchian",
+      "params": {
+        "period": 20
+      }
+    },
+    {
+      "id": "dc10",
+      "type": "donchian",
+      "params": {
+        "period": 10
+      }
+    },
+    {
+      "id": "dsma",
+      "type": "sma",
+      "params": {
+        "period": 100
+      },
+      "timeframe": "1d"
+    }
+  ],
+  "rules": {
+    "entry_long": {
+      "op": "all",
+      "args": [
+        {
+          "op": "crosses_above",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "dc20",
+            "output": "upper",
+            "bars_ago": 1
+          }
+        },
+        {
+          "op": ">",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "dsma"
+          }
+        }
+      ]
+    },
+    "exit_long": {
+      "op": "<",
+      "left": {
+        "input": "close"
+      },
+      "right": {
+        "indicator": "dc10",
+        "output": "lower",
+        "bars_ago": 1
+      }
+    },
+    "entry_short": {
+      "op": "all",
+      "args": [
+        {
+          "op": "crosses_below",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "dc20",
+            "output": "lower",
+            "bars_ago": 1
+          }
+        },
+        {
+          "op": "<",
+          "left": {
+            "input": "close"
+          },
+          "right": {
+            "indicator": "dsma"
+          }
+        }
+      ]
+    },
+    "exit_short": {
+      "op": ">",
+      "left": {
+        "input": "close"
+      },
+      "right": {
+        "indicator": "dc10",
+        "output": "upper",
+        "bars_ago": 1
+      }
+    }
+  },
+  "risk": {
+    "position_sizing": {
+      "type": "percent_equity",
+      "value": 100
+    },
+    "leverage": 1,
+    "stop_loss": {
+      "type": "atr",
+      "multiple": 2,
+      "atr_period": 20
+    },
+    "trailing_stop": {
+      "type": "atr",
+      "multiple": 3,
+      "atr_period": 20
+    }
+  },
+  "costs": {
+    "fee_profile": "lighter_standard",
+    "slippage_ticks": 1,
+    "funding": true
+  }
+}
