@@ -262,7 +262,7 @@ def test_a_dataset_is_swapped_in_whole(tmp_path: Path, monkeypatch: pytest.Monke
     storage.write_bars(_series("binance_futures", "BTCUSDT", "2025-01-01", "2025-03-01", "1D", **price))
     assert storage.list_datasets() == [("binance_futures", "BTCUSDT")]
     assert storage.time_ranges() == {("binance_futures", "BTCUSDT"): (ts("2025-01-01"), ts("2025-03-01"))}
-    assert not (tmp_path / "bars" / ".staging" / "source=binance_futures" / "symbol=BTCUSDT").exists()
+    assert not (tmp_path / "bars" / ".staging").exists(), "nothing is left behind"
 
 
 def test_a_corrupt_cached_lighter_page_is_fetched_again(tmp_path: Path) -> None:

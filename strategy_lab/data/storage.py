@@ -9,6 +9,7 @@ Layout (Hive-style, so DuckDB and pyarrow read the partition columns back automa
 
 from __future__ import annotations
 
+import contextlib
 import shutil
 from pathlib import Path
 
@@ -46,6 +47,9 @@ def _write_partitioned(df: pd.DataFrame, root: Path, source: str, symbol: str) -
         shutil.rmtree(target)
     target.parent.mkdir(parents=True, exist_ok=True)
     staging.rename(target)
+    for empty in (staging.parent, staging.parent.parent):  # source=…, then .staging, once nothing else is there
+        with contextlib.suppress(OSError):
+            empty.rmdir()
     return [target / f"year={year}" / "part-0.parquet" for year in years]
 
 
