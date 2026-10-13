@@ -341,6 +341,12 @@ Donchian lab 58/100 on 2023-09 → 2026-09; the AI builder's spec valid first ti
 the data coverage one day late: DuckDB converted UTC timestamps to the PC's time zone (UTC+6), and the default
 window was computed from those local dates. Every DuckDB connection is now UTC (test runs it under two zones).
 
+**Found while testing a strategy over 2018–2026:** the lab loaded its window *minus the indicator warm-up*,
+and since the coverage rule (above) that reached before Binance's first bar, so the whole run silently used
+Bitstamp (on an open network it would also have kept the lab off Lighter for recent windows). `load_market`
+now chooses datasets by the window alone and loads warm-up from the same datasets (`history_from`). REPORT's
+lab numbers predate the coverage rule and were not affected.
+
 **Benchmark complete:** NautilusTrader's 1,600-run sweep took 10,327 s on 1 core and 2,522 s on 4 (3.4 GB
 peak), vs 48.5 s / 15.2 s for the fast engine; the REPORT verdict quotes them. The fast engine's "cold" row
 was relabelled: it loads compiled code from Numba's cache (0.29 s); a first run that compiles takes 3.4 s.

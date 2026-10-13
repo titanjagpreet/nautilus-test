@@ -206,6 +206,17 @@ def test_funding_covers_the_window_or_is_labelled_partial() -> None:
     assert len(market.funding) == 366 * 3
 
 
+@pytest.mark.usefixtures("open_network_store")
+def test_warm_up_history_never_switches_the_dataset() -> None:
+    """Regression: the lab asked for its window minus the indicator warm-up, which reached before Lighter's (or
+    Binance's) first bar, so the whole run silently moved to a less preferred dataset."""
+    start, end = ts("2026-01-20"), ts("2026-02-20")
+    market = inputs.load_market("BTC-PERP", start, end, price_decimals=1, history_from=ts("2025-06-01"))
+    assert market.source == "lighter/BTC-PERP"
+    assert market.bars_1m["ts"].min() == ts("2026-01-01"), "as much warm-up as the dataset has"
+    assert market.funding["ts"].min() == ts("2026-01-01")
+
+
 def utc(text: str) -> dt.datetime:
     return dt.datetime.fromisoformat(text).replace(tzinfo=dt.UTC)
 

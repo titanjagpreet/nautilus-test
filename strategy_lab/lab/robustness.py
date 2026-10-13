@@ -303,7 +303,8 @@ def run_lab(
     report("loading data", 0.0)
     if market is None:
         symbol = spec.market.symbol
-        market = load_market(symbol, start - warmup, end, contract_spec(symbol).price_decimals, source)
+        decimals = contract_spec(symbol).price_decimals
+        market = load_market(symbol, start, end, decimals, source, history_from=start - warmup)
     evaluator = Evaluator(spec, market, warmup, objective)
     window = Window(start, end)
 

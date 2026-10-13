@@ -115,16 +115,21 @@ def load_market(
     end: pd.Timestamp,
     price_decimals: int,
     source: str | None = None,
+    history_from: pd.Timestamp | None = None,
 ) -> MarketData:
+    """Bars and funding for [start, end). ``history_from``: also load the same datasets' earlier rows, as far as
+    they go (indicator warm-up); the datasets are still chosen by [start, end) alone, so asking for warm-up never
+    switches a backtest to a less preferred source."""
     src, sym = resolve_bar_source(market, start, end, source)
-    bars = round_to_tick(storage.read_bars(src, sym, start, end), price_decimals)
+    first = min(start, history_from) if history_from is not None else start
+    bars = round_to_tick(storage.read_bars(src, sym, first, end), price_decimals)
     if bars.empty:
         raise ValueError(f"no {src}/{sym} bars between {start} and {end}")
     empty = {"ts": pd.Series([], dtype="datetime64[ns, UTC]"), "rate": [], "period_hours": []}
     funding, funding_source = pd.DataFrame(empty), None
     if (chosen := resolve_funding_source(market, start, end)) is not None:
         (f_src, f_sym), funding_source = chosen
-        funding = storage.read_funding(f_src, f_sym, start, end)[["ts", "rate", "period_hours"]]
+        funding = storage.read_funding(f_src, f_sym, first, end)[["ts", "rate", "period_hours"]]
     return MarketData(market, f"{src}/{sym}", bars.reset_index(drop=True), funding, funding_source)
 
 
