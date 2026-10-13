@@ -335,6 +335,11 @@ worked; Dukascopy answered HTTP 202 (cause unknown) and HistData was used. Light
 correlation 0.999998, median 2.0 bps (DATA.md §6). Two real-data tests looked for this environment's dataset by
 name and would have skipped there — they now use whichever dataset covers their window; a multi-line source
 error no longer breaks the quality report's table, and Dukascopy's error keeps its actual reason.
+`scripts/demo.py` there (Windows, 130 s): EMA crossover 2024 on Binance futures — **identical trades on both
+engines** (200 trades, −445.83 USDC; 3.5 s for the fast engine's first run, which compiles, vs 25.7 s);
+Donchian lab 58/100 on 2023-09 → 2026-09; the AI builder's spec valid first time ($0.00125). It also showed
+the data coverage one day late: DuckDB converted UTC timestamps to the PC's time zone (UTC+6), and the default
+window was computed from those local dates. Every DuckDB connection is now UTC (test runs it under two zones).
 
 **Benchmark complete:** NautilusTrader's 1,600-run sweep took 10,327 s on 1 core and 2,522 s on 4 (3.4 GB
 peak), vs 48.5 s / 15.2 s for the fast engine; the REPORT verdict quotes them. The fast engine's "cold" row

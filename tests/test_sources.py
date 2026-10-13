@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import datetime as dt
 import gzip
+import json
+import os
 import subprocess
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
@@ -309,3 +312,29 @@ def test_a_multi_line_source_error_stays_one_table_row() -> None:
     attempt = pipeline.Attempt("XAU 1m", "dukascopy", "blocked", "failed:\n---\nInstrument: Gold | x\n")
     table = pipeline.render_attempts([attempt])
     assert table.splitlines()[-1] == "| XAU 1m | dukascopy | **blocked** | failed: --- Instrument: Gold / x |"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the TZ variable sets the local time zone on POSIX only")
+@pytest.mark.usefixtures("open_network_store")
+def test_coverage_is_in_utc_whatever_the_machines_time_zone() -> None:
+    """Regression: on a UTC+6 machine the coverage showed 2026-10-01 for data ending 2026-09-30 23:59 UTC."""
+    script = (
+        "import json; from strategy_lab.api import services; from strategy_lab.data import storage; "
+        "first = services.coverage()['markets']['BTC-PERP']['bars'][0]; "
+        "last = storage.time_ranges()[('lighter', 'BTC-PERP')][1]; "
+        "print(json.dumps([first['first'], first['last'], str(last)]))"
+    )
+    for zone in ("Asia/Dhaka", "America/New_York"):
+        out = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=True,
+            env=os.environ | {"TZ": zone},
+        )
+        assert json.loads(out.stdout) == [
+            "2026-01-01T00:00:00+00:00",
+            "2026-02-28T18:00:00+00:00",
+            "2026-02-28 18:00:00+00:00",
+        ], zone

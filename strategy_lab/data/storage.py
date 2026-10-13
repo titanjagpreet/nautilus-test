@@ -135,19 +135,27 @@ def time_ranges(root: Path | None = None) -> dict[tuple[str, str], tuple[pd.Time
         return {}
     pattern = (base / "source=*" / "symbol=*" / "year=*" / "*.parquet").as_posix()
     rows = (
-        duckdb.connect()
+        _utc_connection()
         .execute(
             f"SELECT source, symbol, min(ts), max(ts) FROM read_parquet('{pattern}', hive_partitioning = true) "
             "GROUP BY 1, 2"
         )
         .fetchall()
     )
-    return {(s, y): (pd.Timestamp(lo).tz_convert("UTC"), pd.Timestamp(hi).tz_convert("UTC")) for s, y, lo, hi in rows}
+    return {(s, y): (pd.Timestamp(lo), pd.Timestamp(hi)) for s, y, lo, hi in rows}
+
+
+def _utc_connection() -> duckdb.DuckDBPyConnection:
+    """DuckDB returns time-zone-aware timestamps in the session time zone, which defaults to the machine's: a bar
+    stamped 2026-09-30 23:59 UTC came back as 2026-10-01 05:59+06:00 on a user's PC. Every connection is UTC."""
+    con = duckdb.connect()
+    con.execute("SET TimeZone = 'UTC'")
+    return con
 
 
 def duckdb_connection() -> duckdb.DuckDBPyConnection:
-    """In-memory DuckDB with views ``bars_1m``, ``funding`` and ``bars_<tf>`` over the Parquet store."""
-    con = duckdb.connect()
+    """In-memory DuckDB (UTC) with views ``bars_1m``, ``funding`` and ``bars_<tf>`` over the Parquet store."""
+    con = _utc_connection()
     views = {"bars_1m": config.bars_dir(), "funding": config.funding_dir()}
     resampled = config.resampled_dir()
     if resampled.exists():
