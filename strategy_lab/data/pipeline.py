@@ -348,7 +348,8 @@ def render_cross_checks(checks: list[CrossCheck], skipped: list[str]) -> str:
 def render_attempts(attempts: list[Attempt]) -> str:
     lines = ["## Source attempts (in fallback order)", "", "| dataset | source | status | detail |", "|---|---|---|---|"]
     for a in attempts:
-        lines.append(f"| {a.dataset} | {a.source} | **{a.status}** | {a.detail.replace('|', '/')} |")
+        detail = " ".join(a.detail.split()).replace("|", "/")  # one table row, whatever the source printed
+        lines.append(f"| {a.dataset} | {a.source} | **{a.status}** | {detail} |")
     return "\n".join(lines) + "\n"
 
 

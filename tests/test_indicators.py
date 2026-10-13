@@ -247,15 +247,17 @@ def fast_values(df: pd.DataFrame, ind: Indicator) -> pd.DataFrame:
 
 
 def real_bars() -> pd.DataFrame | None:
+    """Two months of real BTC 15-minute bars from whichever stored dataset covers them, or ``None``."""
     from strategy_lab.data import storage  # noqa: PLC0415
     from strategy_lab.data.resample import resample_bars  # noqa: PLC0415
+    from strategy_lab.engines.inputs import resolve_bar_source  # noqa: PLC0415
 
-    if ("binance_spot_gh", "BTCUSDT") not in storage.list_datasets():
+    start, end = pd.Timestamp("2024-03-01", tz="UTC"), pd.Timestamp("2024-05-01", tz="UTC")
+    try:
+        source, symbol = resolve_bar_source("BTC-PERP", start, end)
+    except (FileNotFoundError, ValueError):
         return None
-    bars = storage.read_bars(
-        "binance_spot_gh", "BTCUSDT", pd.Timestamp("2024-03-01", tz="UTC"), pd.Timestamp("2024-05-01", tz="UTC")
-    )
-    bars15 = resample_bars(bars, "15m")
+    bars15 = resample_bars(storage.read_bars(source, symbol, start, end), "15m")
     return bars15.rename(columns={"ts": "time"})[["time", "open", "high", "low", "close", "volume"]]
 
 

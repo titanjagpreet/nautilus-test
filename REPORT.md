@@ -51,6 +51,12 @@ Dukascopy), so documented GitHub republications were used and cross-checked:
 **Caveat:** these are proxies for Lighter's own perpetuals (spot BTC prices with Binance perp funding; spot
 gold). Absolute P&L will differ on Lighter data; the engines, the lab and the comparison do not depend on it.
 
+**On an open network** (the user's machine, 2026-10-13 — DATA.md §6) Binance's own archive and Lighter's API
+both worked: Lighter BTC-PERP 1m from its listing (2025-01-17) matches Binance USD-M futures with a close
+correlation of 0.999998 and a median difference of 2.0 bps (99th percentile 13.5 bps; the worst minutes are the
+2025-10-10 liquidation crash). Backtests there use Lighter bars and funding inside Lighter's history and Binance
+futures for longer windows.
+
 ## 2. NautilusTrader 1.231 — measured
 
 Hand-written EMA(12/48) + ATR bracket strategy, real BTC data (LEARNINGS §12):

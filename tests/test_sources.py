@@ -12,7 +12,7 @@ import pandas as pd
 import pytest
 
 from strategy_lab.api import services
-from strategy_lab.data import storage
+from strategy_lab.data import pipeline, storage
 from strategy_lab.data.sources import binance, dukascopy, lighter
 from strategy_lab.data.sources import github_datasets as gh
 from strategy_lab.data.sources.http import SourceUnavailableError
@@ -284,13 +284,14 @@ def test_dukascopy_keeps_only_files_the_cli_finished(tmp_path: Path, monkeypatch
             calls.append(cmd)
             out = Path(cmd[cmd.index("-dir") + 1]) / (cmd[cmd.index("-fn") + 1] + ".csv")
             out.write_text("timestamp,open\n1,2\n" if ok else "timestamp,op", encoding="utf-8")
-            return subprocess.CompletedProcess(cmd, 0 if ok else 1, "", "" if ok else "network error")
+            banner = "-----\nInstrument: Gold vs US Dollar\n-----\n\nSomething went wrong:\n > network error\n"
+            return subprocess.CompletedProcess(cmd, 0 if ok else 1, "", "" if ok else banner)
 
         return run
 
     start, end = ts("2020-01-01"), ts("2021-01-01")
     monkeypatch.setattr(dukascopy.subprocess, "run", cli(ok=False))
-    with pytest.raises(SourceUnavailableError, match="network error"):
+    with pytest.raises(SourceUnavailableError, match=r"2020: Something went wrong: > network error$"):
         dukascopy._run_cli("bid", start, end, "xauusd-m1-bid-2020")
     folder = tmp_path / "raw" / "dukascopy"
     assert not (folder / "xauusd-m1-bid-2020.csv").exists(), "a failed or interrupted run leaves no final file"
@@ -302,3 +303,9 @@ def test_dukascopy_keeps_only_files_the_cli_finished(tmp_path: Path, monkeypatch
     assert calls[-1][0] == "C:/nodejs/npx.cmd", "npx is launched by its full path (npx.cmd on Windows)"
     assert dukascopy._run_cli("bid", start, end, "xauusd-m1-bid-2020") == path
     assert len(calls) == 2, "a finished file is reused, not downloaded again"
+
+
+def test_a_multi_line_source_error_stays_one_table_row() -> None:
+    attempt = pipeline.Attempt("XAU 1m", "dukascopy", "blocked", "failed:\n---\nInstrument: Gold | x\n")
+    table = pipeline.render_attempts([attempt])
+    assert table.splitlines()[-1] == "| XAU 1m | dukascopy | **blocked** | failed: --- Instrument: Gold / x |"

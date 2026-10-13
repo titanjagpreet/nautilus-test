@@ -329,6 +329,13 @@ window (else a clear error listing every dataset's range); funding falls back to
 labelled; the default window is chosen to match (`tests/test_sources.py`, synthetic store). Same windows and
 results on this machine's data; `make demo` re-run (38 s).
 
+**First open-network run (the user's machine, 2026-10-13):** Binance's archive (futures, spot, funding — every
+zip checksum-verified) and Lighter's REST API (BTC-PERP from 2025-01-17, XAU-PERP from 2025-10-20) all
+worked; Dukascopy answered HTTP 202 (cause unknown) and HistData was used. Lighter vs Binance futures: close
+correlation 0.999998, median 2.0 bps (DATA.md §6). Two real-data tests looked for this environment's dataset by
+name and would have skipped there — they now use whichever dataset covers their window; a multi-line source
+error no longer breaks the quality report's table, and Dukascopy's error keeps its actual reason.
+
 **Benchmark complete:** NautilusTrader's 1,600-run sweep took 10,327 s on 1 core and 2,522 s on 4 (3.4 GB
 peak), vs 48.5 s / 15.2 s for the fast engine; the REPORT verdict quotes them. The fast engine's "cold" row
 was relabelled: it loads compiled code from Numba's cache (0.29 s); a first run that compiles takes 3.4 s.

@@ -168,9 +168,35 @@ ending where a covering funding series ends (`api/services.default_window`).
 * The worst minutes are **real events**, which supports both datasets being genuine: the
   **2018-10-15 Tether de-peg** (BTCUSDT up to +13% over BTCUSD) and the **2019-05-17 Bitstamp-only flash crash**
   to $6,250. 1m return correlation is only 0.70 because Bitstamp is much less liquid (stale prints).
-* **Not run (data unavailable here):** Binance USD-M futures vs Lighter BTC-PERP, and Dukascopy XAU vs Lighter
-  XAU-PERP. Both comparisons are implemented (`pipeline.CROSS_CHECK_PAIRS`) and run automatically when those
-  datasets are present. There is no second XAU source in this environment, so XAU has no cross-check.
+* **Not run here (data unavailable):** Binance USD-M futures vs Lighter BTC-PERP, and Dukascopy XAU vs Lighter
+  XAU-PERP. Both are implemented (`pipeline.CROSS_CHECK_PAIRS`) and run whenever the datasets are present — the
+  first one did on the user's machine (§6).
+
+## 6. First run on an open network (the user's Windows machine, 2026-10-13)
+
+The first time the primary sources ran against the live hosts. Figures are from that run's
+`data/quality_report.md` (pasted by the user; the data itself is not in this repository).
+
+| dataset | result |
+|---|---|
+| Binance USD-M futures BTCUSDT 1m (data.binance.vision) | **ok** — 81 monthly zips, all SHA-256-verified; 3,549,600 bars, 2020-01-01 → 2026-09-30, 100% complete, 0 gaps (2019-09 … 2019-12 are not published: 404) |
+| Binance spot BTCUSDT 1m (data.binance.vision) | **ok** — 110 zips verified; 4,789,279 bars, 2017-08-17 → 2026-09-30: the same row count, range and 33 gaps as the GitHub republication used here |
+| Binance BTCUSDT funding (data.binance.vision) | **ok** — 81 zips verified, 7,395 eight-hourly rows |
+| Lighter BTC-PERP 1m + hourly funding (REST) | **ok** — 895,157 bars, 2025-01-17 08:43 → 2026-09-30, 100% complete, 0 gaps; 14,901 funding rows |
+| Lighter XAU-PERP 1m + hourly funding (REST) | **ok** — 497,086 bars, 2025-10-20 19:14 → 2026-09-30, 100% complete (it trades 24/7 on a spot-gold oracle: the largest flagged moves are the Sunday 22:00 UTC reopen of spot gold); 8,277 funding rows |
+| Dukascopy XAUUSD (dukascopy-node 1.50.0) | **failed** — the server answered HTTP 202 to every request, including a plain HEAD; cause unknown (no matching report found). HistData was used, as here |
+| Bitstamp, HistData (GitHub) | **ok** — identical to this environment's |
+
+| cross-check | overlap | close corr | 1m return corr | median \|diff\| | p99 \|diff\| | worst minutes |
+|---|---|---|---|---|---|---|
+| Binance futures vs **Lighter BTC-PERP** | 895,157 min, 2025-01-17 → 2026-09-30 | 0.999998 | 0.952 | 2.0 bps | 13.5 bps | 2025-10-10 21:16–21:22 UTC (the liquidation crash): up to 300 bps |
+| Binance futures vs Binance spot | 3,547,275 min, 2020 → 2026 | 1.0 | 0.985 | 4.6 bps | 17.1 bps | 2020-03-13 (COVID crash): up to 526 bps |
+
+**What a backtest uses there** (§2 rule): BTC windows inside Lighter's history run on **Lighter** bars and
+funding; longer ones on **Binance USD-M futures** with Binance funding (default window 2023-09-01 → 2026-09-01).
+Gold 3-year windows run on HistData; Lighter's XAU funding covers only their last months, so it is charged
+there and labelled `(partial: …)`. Numbers in REPORT.md were measured on this environment's data (Binance spot
+via GitHub, no Lighter) and will differ slightly from runs on that machine.
 
 ## 5. Validation rules (all datasets)
 

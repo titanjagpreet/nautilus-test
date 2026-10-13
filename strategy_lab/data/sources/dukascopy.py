@@ -54,8 +54,9 @@ def _run_cli(side: str, start: pd.Timestamp, end: pd.Timestamp, name: str) -> Pa
         cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3600, check=False
     )
     if proc.returncode != 0 or not partial.exists():
-        tail = (proc.stderr or proc.stdout)[-400:]
-        raise SourceUnavailableError(f"dukascopy-node failed for {name}: {tail}")
+        output = " ".join((proc.stderr or proc.stdout).split())  # one line; the CLI prints a settings banner first
+        reason = output[output.find("Something went wrong") :] if "Something went wrong" in output else output[-300:]
+        raise SourceUnavailableError(f"dukascopy-node failed for {name}: {reason}")
     partial.replace(target)
     return target
 

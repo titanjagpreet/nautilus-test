@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from strategy_lab.data import storage
+from strategy_lab.engines.inputs import resolve_bar_source
 from strategy_lab.engines.nautilus.handwritten import run_handwritten
 
 pytestmark = pytest.mark.realdata
@@ -13,9 +13,11 @@ pytestmark = pytest.mark.realdata
 
 @pytest.fixture(scope="module")
 def runs() -> dict[bool, object]:
-    if ("binance_spot_gh", "BTCUSDT") not in storage.list_datasets():
-        pytest.skip("real BTC data not downloaded (run `make data`)")
     start, end = pd.Timestamp("2025-07-01", tz="UTC"), pd.Timestamp("2025-07-15", tz="UTC")
+    try:
+        resolve_bar_source("BTC-PERP", start, end)
+    except (FileNotFoundError, ValueError):
+        pytest.skip("no stored BTC history covers July 2025 (run `make data`)")
     return {
         patched: run_handwritten(start, end, "1m", "1m", analyzer_patch=patched)[0] for patched in (False, True)
     }
