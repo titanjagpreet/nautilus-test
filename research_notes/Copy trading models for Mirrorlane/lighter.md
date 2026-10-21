@@ -123,6 +123,8 @@ At least one live product explicitly does wallet copy trading onto Lighter: Dext
 ### Takeaway
 Yes for fills, positions, balances, funding and margin stats. No for open or resting orders and transaction status. I verified this live on 2026-10-21 against a large third-party master account (index 714710). A copier can therefore mirror positions and fills in real time with no permission from the leader, but cannot see the leader's resting limit, TP/SL or TWAP orders unless the leader shares a read-only token. Public pools are the exception: their open orders are public too.
 
+**Correction (later check, 21 Oct 2026):** resting limit orders are not fully private. The public REST `orderBookOrders?market_id=…&limit=…` endpoint returns every resting order in the book with its `owner_account_index` (live: 250 asks and 250 bids for BTC with 119 distinct owners; `limit=1000` is rejected). Stop, take-profit and TWAP orders are not in the book; the public `account` snapshot shows only their counts (`open_order_count`, `pending_order_count`, `position_tied_order_count`). — [orderBookOrders reference](https://apidocs.lighter.xyz/reference/orderbookorders); live query
+
 ### Cited Findings
 **WebSocket** (`wss://mainnet.zklighter.elliot.ai/stream`; docs at [WebSocket reference](https://apidocs.lighter.xyz/docs/websocket-reference)). Each channel was subscribed to without `auth` on 2026-10-21:
 
@@ -161,9 +163,9 @@ Yes for fills, positions, balances, funding and margin stats. No for open or res
 - Restricted regions: the docs say to connect with `?readonly=true` "if you're connecting from a restricted region" to still get read-only data. — [WebSocket reference](https://apidocs.lighter.xyz/docs/websocket-reference). Verified live from a US IP.
 
 ### Inferences
-- A Mirrorlane-style service can watch up to about 5,000 leader accounts per IP in real time for free, using `account_all_trades` and `account_all_positions`, with no cooperation from leaders. Market and IOC fills are visible immediately. Resting limit orders only become visible once they fill.
+- A Mirrorlane-style service can watch up to about 5,000 leader accounts per IP in real time for free, using `account_all_trades` and `account_all_positions`, with no cooperation from leaders. Market and IOC fills are visible immediately. Resting limit orders are visible only by polling `orderBookOrders` snapshots (see the correction above); trigger orders are not visible.
 - Leaders who opt in (for example, a "verified leader" programme) could hand over a long-lived `ro:` token. That would let a copier see and pre-place their resting and TP/SL orders, and get `account_tx` confirmations.
-- Lighter's public account transparency is close to Hyperliquid's for positions and fills, but stricter for open orders.
+- Lighter's public account transparency is close to Hyperliquid's for positions and fills, but stricter for open orders (owners of resting book orders are public; per-account order lists and trigger orders are not).
 - The undocumented public REST `trades` access for master accounts should not be relied on in production. WebSocket `account_all_trades` is documented without auth.
 
 ### Gaps

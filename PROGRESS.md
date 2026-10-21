@@ -358,3 +358,5 @@ found (80/100 in the lab) is `docs/strategies/trend_filtered_breakout.json`.
 **Benchmark complete:** NautilusTrader's 1,600-run sweep took 10,327 s on 1 core and 2,522 s on 4 (3.4 GB
 peak), vs 48.5 s / 15.2 s for the fast engine; the REPORT verdict quotes them. The fast engine's "cold" row
 was relabelled: it loads compiled code from Numba's cache (0.29 s); a first run that compiles takes 3.4 s.
+
+**Product direction: Mirrorlane like Hyperdash.** `docs/MIRRORLANE_LIKE_HYPERDASH.md` maps every Hyperdash feature (docs read 21 Oct 2026) onto Lighter, with each Lighter capability marked live-tested, documented or inferred. Live checks found that public trades carry both sides' positions before each fill (enough to index every account's positions) and that `orderBookOrders` lists each resting order's owner; the copy-trading report and Lighter notes were corrected, since they said resting orders were invisible until filled.
